@@ -47,6 +47,7 @@ const zustand: EingabeZustand = {
   werkzeug: 'zeichnen',
   stiftGesehen: false,
   handballenIgnoriert: 0,
+  abgebrochen: 0,
   letzteArt: '–',
 };
 
@@ -145,7 +146,7 @@ function aktualisiere(): void {
   const art: Record<string, string> = { pen: 'Stift', touch: 'Finger', mouse: 'Maus', '–': '–' };
   statusZeile.textContent =
     `Zeiger: ${pos}   |   Eingabe: ${art[zustand.letzteArt] ?? zustand.letzteArt}` +
-    `   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Räume: ${raeume.length}`;
+    `   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Vom Browser abgebrochen: ${zustand.abgebrochen}   |   Räume: ${raeume.length}`;
   btnZurueck.disabled = verlaufPos === 0;
   btnVor.disabled = verlaufPos >= verlauf.length - 1;
   btnLoeschen.disabled = raeume.length === 0;

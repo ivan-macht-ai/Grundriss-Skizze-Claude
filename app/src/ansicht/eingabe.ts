@@ -21,6 +21,8 @@ export interface EingabeZustand {
   werkzeug: Werkzeug;
   stiftGesehen: boolean;
   handballenIgnoriert: number;
+  /** Wie oft der Browser eine Berührung selbst übernommen hat (zum Beispiel zum Scrollen der Seite) */
+  abgebrochen: number;
   letzteArt: string;
 }
 
@@ -233,7 +235,10 @@ export function verbindeEingabe(
     haken.zustandGeaendert();
   };
   canvas.addEventListener('pointerup', (e) => ende(e, false));
-  canvas.addEventListener('pointercancel', (e) => ende(e, true));
+  canvas.addEventListener('pointercancel', (e) => {
+    if (e.pointerType === 'touch') zustand.abgebrochen++;
+    ende(e, true);
+  });
 
   canvas.addEventListener(
     'wheel',
