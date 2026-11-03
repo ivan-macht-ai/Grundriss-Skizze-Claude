@@ -343,6 +343,13 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 
 ## 8. Notizen für später
 
+- **Stand Ende des ersten Tages:** 1a bis 1d (Kern) fertig. Die App läuft auf dem Mini-PC des Nutzers (Docker, Tailscale) und auf dem Tablet. Zwei Finger verschieben dort, Rückmeldung: "funktioniert Bombe". Stift noch nicht ausprobiert.
+- **Rückmeldung des Nutzers, noch offen:**
+  - Wanddicke eintippen: gibt es im Dialog "Raum bearbeiten" (Doppeltippen im Werkzeug Auswählen). Der Nutzer hat vermutlich noch eine ältere Version auf dem Mini-PC. Aktualisieren: `git pull`, dann `cd deploy && docker compose up -d --build`.
+  - Maßlinien überschneiden sich noch: an Nachbarseiten entfallen sie, aber zwischen mehreren Räumen und an Ecken kann es weiter kollidieren. Lösung überlegen (zum Beispiel Maßlinien nur außen am Gesamtumriss, Umschalter innen/außen, Abstand staffeln).
+  - Beim Auflegen der Finger "pulsiert" etwas auf dem Tablet. Ursache suchen (vermutlich Neuzeichnen oder Statuszeile bei jeder Berührung, oder Hinweistext).
+  - Stifteingabe am Tablet testen (Handballen-Filter, Zeichnen, Doppeltippen mit Stift).
+- **Nächste Etappe:** 1e Türen und Fenster. Davor kurz die drei offenen Punkte oben klären.
 - Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
 - Zwei Finger auf dem Touchpad (Laptop) schicken Mausrad-Ereignisse. Früher wurde senkrechtes Wischen als Zoom gedeutet (Fehler, behoben): Jetzt verschiebt das Mausrad/Touchpad in alle Richtungen, Zoomen mit Spreizen, Strg + Rad oder Zoomknöpfen. Zwei Finger auf dem Touchscreen des Tablets: noch zu testen (Statuszeile zeigt "Vom Browser abgebrochen").
 - Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.
