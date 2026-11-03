@@ -7,17 +7,58 @@
 </head>
 <body>
   <div id="app">
-    <header class="leiste">
+    <header class="kopf">
       <strong class="titel">Skizze</strong>
-      <button id="btn-zurueck" type="button">↶ Zurück</button>
-      <button id="btn-loeschen" type="button">Alles löschen</button>
-      <button id="btn-finger" type="button" aria-pressed="true">Finger: zeichnet</button>
-      <button id="btn-ansicht" type="button">Ansicht zentrieren</button>
       <span class="platz"></span>
-      <button id="btn-pdf" type="button" class="haupt">Muster-PDF</button>
+      <button id="btn-pdf" type="button" class="haupt">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z M14 3v5h5 M9 13h6 M9 17h6"/></svg>
+        <span>Muster-PDF</span>
+      </button>
     </header>
-    <canvas id="flaeche" aria-label="Zeichenfläche"></canvas>
+
+    <main class="buehne">
+      <canvas id="flaeche" aria-label="Zeichenfläche"></canvas>
+
+      <nav class="schiene schiene-links" aria-label="Werkzeuge">
+        <button type="button" class="wz" id="wz-zeichnen" data-werkzeug="zeichnen" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19z M14 7l3 3"/></svg>
+          <span>Zeichnen</span>
+        </button>
+        <button type="button" class="wz" id="wz-hand" data-werkzeug="hand" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M12 3l-3 3 M12 3l3 3 M12 21l-3-3 M12 21l3-3 M3 12l3-3 M3 12l3 3 M21 12l-3-3 M21 12l-3 3"/></svg>
+          <span>Verschieben</span>
+        </button>
+        <hr />
+        <button type="button" class="wz" id="btn-zurueck" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5 M4 9h10a6 6 0 010 12h-3"/></svg>
+          <span>Zurück</span>
+        </button>
+        <button type="button" class="wz" id="btn-vor" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 14l5-5-5-5 M20 9H10a6 6 0 000 12h3"/></svg>
+          <span>Vor</span>
+        </button>
+        <hr />
+        <button type="button" class="wz gefahr" id="btn-loeschen" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6"/></svg>
+          <span id="loeschen-text">Löschen</span>
+        </button>
+      </nav>
+
+      <div class="schiene schiene-zoom" role="group" aria-label="Ansicht">
+        <button type="button" class="wz klein" id="btn-plus" aria-label="Vergrößern">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+        </button>
+        <button type="button" class="wz klein" id="btn-minus" aria-label="Verkleinern">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+        </button>
+        <button type="button" class="wz klein" id="btn-ansicht" aria-label="Ansicht zurücksetzen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg>
+        </button>
+      </div>
+    </main>
+
     <footer class="status" id="status" aria-live="polite"></footer>
+
     <div id="pdf-fenster" class="pdf-fenster" hidden>
       <div class="pdf-kopf">
         <span>Muster-PDF, A4 quer, Maßstab 1:50</span>

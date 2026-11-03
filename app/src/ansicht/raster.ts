@@ -38,6 +38,12 @@ export function zeichneRaster(
   ctx.textBaseline = 'top';
   ctx.fillStyle = farben.text;
 
+  // Zahlen liegen an den Achsen (nicht am Fensterrand), damit beide Skalen im Kreuzungspunkt bei 0 beginnen.
+  // Liegt das Kreuz außerhalb des Bildes, bleiben die Zahlen am Rand sichtbar.
+  const ursprung = toScreen(vp, 0, 0);
+  const textY = Math.min(Math.max(ursprung.y + 5, 4), hoehe - 18);
+  const textX = Math.min(Math.max(ursprung.x + 5, 4), breite - 48);
+
   for (let i = xMin; i <= xMax; i++) {
     const istHaupt = i % haupt === 0;
     const x = Math.round(toScreen(vp, i * schritt, 0).x) + 0.5;
@@ -46,7 +52,7 @@ export function zeichneRaster(
     ctx.moveTo(x, 0);
     ctx.lineTo(x, hoehe);
     ctx.stroke();
-    if (istHaupt) ctx.fillText(`${trim(i * schritt)} m`, x + 3, 3);
+    if (istHaupt) ctx.fillText(i === 0 ? '0' : `${trim(i * schritt)} m`, x + 4, textY);
   }
   for (let j = yMin; j <= yMax; j++) {
     const istHaupt = j % haupt === 0;
@@ -56,7 +62,7 @@ export function zeichneRaster(
     ctx.moveTo(0, y);
     ctx.lineTo(breite, y);
     ctx.stroke();
-    if (istHaupt && j !== 0) ctx.fillText(`${trim(j * schritt)} m`, 3, y + 3);
+    if (istHaupt && j !== 0) ctx.fillText(`${trim(j * schritt)} m`, textX, y + 3);
   }
 }
 

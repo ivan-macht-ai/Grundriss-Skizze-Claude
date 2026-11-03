@@ -1,10 +1,10 @@
 // Eingabe über Pointer-Events: Stift, Finger und Maus über eine Schnittstelle.
 // Regeln:
-//  - Stift und Maus zeichnen.
-//  - Finger zeichnet (Schalter "Finger: zeichnet") oder verschiebt. Zwei Finger verschieben und zoomen immer.
-//  - Sobald ein Stift gesehen wurde, schaltet "Finger" auf verschieben um.
+//  - Werkzeug "Zeichnen": Stift und Maus zeichnen. Ein Finger zeichnet nur, solange noch kein Stift gesehen wurde.
+//  - Werkzeug "Verschieben": Stift, Finger und Maus verschieben die Ansicht.
+//  - Zwei Finger verschieben und zoomen immer.
 //  - Solange der Stift aufliegt, werden Finger ignoriert (Handballen).
-//  - Maus: Umschalt + ziehen verschiebt, Mausrad zoomt.
+//  - Maus: Umschalt + ziehen verschiebt; Mausrad zoomt; Trackpad-Wischen verschiebt.
 
 import { panBy, toWorld, zoomAt, type Viewport } from './viewport';
 
@@ -13,8 +13,10 @@ export interface Strich {
   art: 'pen' | 'touch' | 'mouse';
 }
 
+export type Werkzeug = 'zeichnen' | 'hand';
+
 export interface EingabeZustand {
-  fingerZeichnet: boolean;
+  werkzeug: Werkzeug;
   stiftGesehen: boolean;
   handballenIgnoriert: number;
   letzteArt: string;
@@ -74,10 +76,7 @@ export function verbindeEingabe(
     zustand.letzteArt = e.pointerType;
     if (e.pointerType === 'pen') {
       stiftAuf = true;
-      if (!zustand.stiftGesehen || zustand.fingerZeichnet) {
-        zustand.stiftGesehen = true;
-        zustand.fingerZeichnet = false;
-      }
+      zustand.stiftGesehen = true;
     }
     if (e.pointerType === 'touch' && stiftAuf) {
       zustand.handballenIgnoriert++;
@@ -97,7 +96,9 @@ export function verbindeEingabe(
       return;
     }
     const verschiebt =
-      (e.pointerType === 'mouse' && e.shiftKey) || (e.pointerType === 'touch' && !zustand.fingerZeichnet);
+      zustand.werkzeug === 'hand' ||
+      (e.pointerType === 'mouse' && e.shiftKey) ||
+      (e.pointerType === 'touch' && zustand.stiftGesehen);
     if (verschiebt) {
       verschiebeId = e.pointerId;
     } else {
@@ -162,9 +163,16 @@ export function verbindeEingabe(
     'wheel',
     (e) => {
       e.preventDefault();
-      const p = lokal(e as unknown as PointerEvent);
-      const faktor = Math.exp(-e.deltaY * 0.0015);
-      haken.setzeAnsicht(zoomAt(haken.holeAnsicht(), p.x, p.y, faktor));
+      const r = canvas.getBoundingClientRect();
+      const px = e.clientX - r.left;
+      const py = e.clientY - r.top;
+      // Trackpad-Wischen (Nachkommastellen oder seitlich) verschiebt; Mausrad und Zwei-Finger-Spreizen zoomen.
+      const trackpadWischen = !e.ctrlKey && (e.deltaX !== 0 || !Number.isInteger(e.deltaY));
+      if (trackpadWischen) {
+        haken.setzeAnsicht(panBy(haken.holeAnsicht(), -e.deltaX, -e.deltaY));
+      } else {
+        haken.setzeAnsicht(zoomAt(haken.holeAnsicht(), px, py, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))));
+      }
     },
     { passive: false },
   );

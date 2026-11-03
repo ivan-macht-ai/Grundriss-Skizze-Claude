@@ -1,4 +1,5 @@
-/* Oberfläche: eine Leiste oben, die Zeichenfläche, eine Statuszeile unten.
+/* Oberfläche wie ein Zeichenprogramm: schmale Kopfzeile, die Fläche füllt den Rest,
+   Werkzeuge schweben als Leiste links, Zoom unten rechts. Große Tippflächen für Finger und Stift.
    Farben nur über Variablen, damit hell und dunkel sauber umschalten. */
 :root {
   --bg: #f4f5f3;
@@ -8,11 +9,13 @@
   --linie: #d5dad7;
   --akzent: #0b6b57;
   --akzent-text: #ffffff;
+  --gefahr: #b3261e;
+  --schatten: rgba(20, 30, 28, 0.16);
   --flaeche: #fbfcfb;
   --raster-fein: #e7ebe8;
   --raster-grob: #cfd6d2;
-  --raster-text: #77827e;
-  --raster-achse: #8fa39b;
+  --raster-text: #6c7773;
+  --raster-achse: #5d7f73;
   --strich: #12312a;
   color-scheme: light;
 }
@@ -25,11 +28,13 @@
     --linie: #2f3835;
     --akzent: #3fb99b;
     --akzent-text: #06201a;
+    --gefahr: #f2b8b5;
+    --schatten: rgba(0, 0, 0, 0.5);
     --flaeche: #171c1a;
     --raster-fein: #202725;
     --raster-grob: #2e3835;
-    --raster-text: #78867f;
-    --raster-achse: #4d6159;
+    --raster-text: #8a978f;
+    --raster-achse: #6f9488;
     --strich: #dcefe8;
     color-scheme: dark;
   }
@@ -42,11 +47,13 @@
   --linie: #2f3835;
   --akzent: #3fb99b;
   --akzent-text: #06201a;
+  --gefahr: #f2b8b5;
+  --schatten: rgba(0, 0, 0, 0.5);
   --flaeche: #171c1a;
   --raster-fein: #202725;
   --raster-grob: #2e3835;
-  --raster-text: #78867f;
-  --raster-achse: #4d6159;
+  --raster-text: #8a978f;
+  --raster-achse: #6f9488;
   --strich: #dcefe8;
   color-scheme: dark;
 }
@@ -66,55 +73,152 @@ body {
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
 #app {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
-.leiste {
+svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* Kopfzeile */
+.kopf {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  padding: 8px max(12px, env(safe-area-inset-left, 0px)) 8px max(12px, env(safe-area-inset-right, 0px));
+  padding: 6px max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px));
   background: var(--leiste);
   border-bottom: 1px solid var(--linie);
-}
-.titel {
-  margin-right: 8px;
 }
 .platz {
   flex: 1;
 }
 button {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--linie);
-  border-radius: 8px;
-  background: var(--leiste);
-  color: var(--text);
   font: inherit;
+  color: var(--text);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 button:focus-visible {
   outline: 2px solid var(--akzent);
   outline-offset: 2px;
 }
-button.haupt {
+.kopf button,
+.pdf-kopf button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--linie);
+  border-radius: 12px;
+  background: var(--leiste);
+}
+.kopf button.haupt {
   background: var(--akzent);
   border-color: var(--akzent);
   color: var(--akzent-text);
   font-weight: 600;
 }
-#flaeche {
+
+/* Zeichenbühne */
+.buehne {
+  position: relative;
   flex: 1;
   min-height: 0;
+}
+#flaeche {
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
+  display: block;
   background: var(--flaeche);
   touch-action: none;
-  display: block;
+  cursor: crosshair;
 }
+#flaeche.hand {
+  cursor: grab;
+}
+
+/* Schwebende Leisten */
+.schiene {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: var(--leiste);
+  border: 1px solid var(--linie);
+  border-radius: 20px;
+  box-shadow: 0 6px 20px var(--schatten);
+}
+.schiene-links {
+  left: max(10px, env(safe-area-inset-left, 0px));
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: calc(100% - 20px);
+  overflow-y: auto;
+}
+.schiene-zoom {
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: 12px;
+}
+.schiene hr {
+  width: 70%;
+  margin: 2px auto;
+  border: 0;
+  border-top: 1px solid var(--linie);
+}
+.wz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 68px;
+  min-height: 62px;
+  padding: 6px 2px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.wz.klein {
+  width: 56px;
+  min-height: 56px;
+}
+.wz:active:not(:disabled) {
+  background: var(--raster-fein);
+}
+.wz[aria-pressed='true'] {
+  background: var(--akzent);
+  color: var(--akzent-text);
+}
+.wz:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.wz.gefahr {
+  color: var(--gefahr);
+}
+.wz.gefahr.scharf {
+  background: var(--gefahr);
+  color: var(--leiste);
+}
+
+/* Statuszeile */
 .status {
   padding: 6px max(12px, env(safe-area-inset-left, 0px));
   font-size: 12px;
@@ -124,6 +228,8 @@ button.haupt {
   white-space: nowrap;
   overflow-x: auto;
 }
+
+/* PDF-Fenster */
 .pdf-fenster {
   position: fixed;
   inset: 0;
@@ -157,4 +263,12 @@ button.haupt {
 }
 [hidden] {
   display: none !important;
+}
+
+/* Schmale Fenster: Leiste kompakter */
+@media (max-width: 640px) {
+  .wz {
+    width: 58px;
+    min-height: 56px;
+  }
 }

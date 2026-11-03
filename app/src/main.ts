@@ -1,23 +1,30 @@
 import './styles.css';
-import { verbindeEingabe, type EingabeZustand, type Strich } from './ansicht/eingabe';
+import { verbindeEingabe, type EingabeZustand, type Strich, type Werkzeug } from './ansicht/eingabe';
 import { zeichneRaster, type RasterFarben } from './ansicht/raster';
-import { startAnsicht, toScreen, type Viewport } from './ansicht/viewport';
+import { startAnsicht, toScreen, zoomAt, type Viewport } from './ansicht/viewport';
 import { erzeugeMusterPdf } from './pdf/musterPdf';
 
 const canvas = document.getElementById('flaeche') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const statusZeile = document.getElementById('status')!;
-const btnFinger = document.getElementById('btn-finger') as HTMLButtonElement;
+const btn = (id: string) => document.getElementById(id) as HTMLButtonElement;
+const btnZurueck = btn('btn-zurueck');
+const btnVor = btn('btn-vor');
+const btnLoeschen = btn('btn-loeschen');
+const loeschenText = document.getElementById('loeschen-text')!;
+const werkzeugKnoepfe = [...document.querySelectorAll<HTMLButtonElement>('[data-werkzeug]')];
 
 let breite = 0;
 let hoehe = 0;
 let vp: Viewport = { scale: 100, ox: 40, oy: 400 };
 const striche: Strich[] = [];
+const vorgemerkt: Strich[] = [];
 let zeigerWelt: { x: number; y: number } | null = null;
 let geplant = false;
+let loeschenScharf: number | undefined;
 
 const zustand: EingabeZustand = {
-  fingerZeichnet: true,
+  werkzeug: 'zeichnen',
   stiftGesehen: false,
   handballenIgnoriert: 0,
   letzteArt: '–',
@@ -63,7 +70,8 @@ function zeichne(): void {
   ctx.lineJoin = 'round';
   ctx.lineWidth = 2.5;
   ctx.strokeStyle = farbe('--strich');
-  for (const s of [...striche, ...(eingabe.aktuellerStrich() ? [eingabe.aktuellerStrich()!] : [])]) {
+  const laufend = eingabe.aktuellerStrich();
+  for (const s of laufend ? [...striche, laufend] : striche) {
     if (s.punkte.length < 2) continue;
     ctx.beginPath();
     s.punkte.forEach((p, i) => {
@@ -75,7 +83,7 @@ function zeichne(): void {
   }
 }
 
-function aktualisiereStatus(): void {
+function aktualisiere(): void {
   const pos = zeigerWelt
     ? `x ${zeigerWelt.x.toFixed(2).replace('.', ',')} m, y ${zeigerWelt.y.toFixed(2).replace('.', ',')} m`
     : '–';
@@ -83,8 +91,29 @@ function aktualisiereStatus(): void {
   statusZeile.textContent =
     `Zeiger: ${pos}   |   Eingabe: ${art[zustand.letzteArt] ?? zustand.letzteArt}` +
     `   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Striche: ${striche.length}`;
-  btnFinger.textContent = zustand.fingerZeichnet ? 'Finger: zeichnet' : 'Finger: verschiebt';
-  btnFinger.setAttribute('aria-pressed', String(zustand.fingerZeichnet));
+  btnZurueck.disabled = striche.length === 0;
+  btnVor.disabled = vorgemerkt.length === 0;
+  btnLoeschen.disabled = striche.length === 0;
+  for (const k of werkzeugKnoepfe) k.setAttribute('aria-pressed', String(k.dataset.werkzeug === zustand.werkzeug));
+  canvas.classList.toggle('hand', zustand.werkzeug === 'hand');
+  if (striche.length === 0) entschaerfeLoeschen();
+}
+
+function waehleWerkzeug(w: Werkzeug): void {
+  zustand.werkzeug = w;
+  aktualisiere();
+}
+
+function entschaerfeLoeschen(): void {
+  window.clearTimeout(loeschenScharf);
+  loeschenScharf = undefined;
+  btnLoeschen.classList.remove('scharf');
+  loeschenText.textContent = 'Löschen';
+}
+
+function zoomMitte(faktor: number): void {
+  vp = zoomAt(vp, breite / 2, hoehe / 2, faktor);
+  plane();
 }
 
 const eingabe = verbindeEingabe(
@@ -97,33 +126,50 @@ const eingabe = verbindeEingabe(
     },
     neuerStrich: (s) => {
       striche.push(s);
-      aktualisiereStatus();
+      vorgemerkt.length = 0;
+      aktualisiere();
     },
     zeichneNeu: plane,
-    zustandGeaendert: aktualisiereStatus,
+    zustandGeaendert: aktualisiere,
     zeigerBewegt: (x, y) => {
       zeigerWelt = { x, y };
-      aktualisiereStatus();
+      aktualisiere();
     },
   },
   zustand,
 );
 
-document.getElementById('btn-zurueck')!.addEventListener('click', () => {
-  striche.pop();
-  aktualisiereStatus();
+for (const k of werkzeugKnoepfe) k.addEventListener('click', () => waehleWerkzeug(k.dataset.werkzeug as Werkzeug));
+
+btnZurueck.addEventListener('click', () => {
+  const s = striche.pop();
+  if (s) vorgemerkt.push(s);
+  aktualisiere();
   plane();
 });
-document.getElementById('btn-loeschen')!.addEventListener('click', () => {
+btnVor.addEventListener('click', () => {
+  const s = vorgemerkt.pop();
+  if (s) striche.push(s);
+  aktualisiere();
+  plane();
+});
+// Löschen braucht zwei Tipps (die Vorschau erlaubt keine Rückfrage-Fenster)
+btnLoeschen.addEventListener('click', () => {
+  if (loeschenScharf === undefined) {
+    btnLoeschen.classList.add('scharf');
+    loeschenText.textContent = 'Sicher?';
+    loeschenScharf = window.setTimeout(entschaerfeLoeschen, 3000);
+    return;
+  }
   striche.length = 0;
-  aktualisiereStatus();
+  vorgemerkt.length = 0;
+  entschaerfeLoeschen();
+  aktualisiere();
   plane();
 });
-btnFinger.addEventListener('click', () => {
-  zustand.fingerZeichnet = !zustand.fingerZeichnet;
-  aktualisiereStatus();
-});
-document.getElementById('btn-ansicht')!.addEventListener('click', () => {
+btn('btn-plus').addEventListener('click', () => zoomMitte(1.3));
+btn('btn-minus').addEventListener('click', () => zoomMitte(1 / 1.3));
+btn('btn-ansicht').addEventListener('click', () => {
   vp = startAnsicht(breite, hoehe);
   plane();
 });
@@ -134,7 +180,7 @@ const rahmen = document.getElementById('pdf-rahmen') as HTMLIFrameElement;
 const hinweis = document.getElementById('pdf-hinweis')!;
 let pdfUrl: string | null = null;
 
-document.getElementById('btn-pdf')!.addEventListener('click', async () => {
+btn('btn-pdf').addEventListener('click', async () => {
   hinweis.textContent = 'PDF wird erzeugt …';
   fenster.hidden = false;
   try {
@@ -152,7 +198,7 @@ document.getElementById('btn-pdf')!.addEventListener('click', async () => {
     hinweis.textContent = `PDF konnte nicht erzeugt werden: ${(fehler as Error).message}`;
   }
 });
-document.getElementById('pdf-zu')!.addEventListener('click', () => {
+btn('pdf-zu').addEventListener('click', () => {
   fenster.hidden = true;
   rahmen.removeAttribute('src');
 });
@@ -160,4 +206,4 @@ document.getElementById('pdf-zu')!.addEventListener('click', () => {
 window.addEventListener('resize', passeGroesseAn);
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', plane);
 passeGroesseAn();
-aktualisiereStatus();
+aktualisiere();
