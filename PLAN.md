@@ -5,7 +5,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 
 ## Fortschritt
 
-- [ ] 1a Gerüst, Zeichenfläche, Muster-PDF für HottCAD
+- [x] 1a Gerüst, Zeichenfläche, Muster-PDF (Stift und Handballen auf dem Tablet noch zu testen)
 - [ ] 1b Formenerkennung
 - [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung
 - [ ] 1d Wände und Zwischenwände
@@ -38,7 +38,8 @@ Der Server gibt alles an n8n weiter, n8n legt es beim Kunden in Twenty (CRM) ab.
 - Tablets im Querformat, Stift und Finger. Handballen werden ignoriert.
 - Gezeichnet wird das Innenmaß. Alle Linien exakt gerade. Winkel nur 0°, 45°, 90°. Freie Winkel später optional.
 - Formen: Viereck, L, U, T, mit 45°-Schrägen. Toleranzen einstellbar.
-- Wände standardmäßig aus. Schalter "Wände um den Raum". Zwischenwände werden erkannt, Dicke wird abgefragt.
+- Wände standardmäßig aus. Schalter "Wände um den Raum". Zwischenwände werden erkannt, Dicke wird abgefragt. Die Wanddicke ist immer frei einstellbar; die Standarddicke ist nur ein Vorschlag.
+- Arbeitsweise: Der Nutzer sieht den Fortschritt in einer veröffentlichten Vorschau zum Anklicken. An Meilensteinen prüft ein Opus-Unteragent die Arbeit gegen den Plan.
 - Türen und Fenster wie in der Bauzeichnung. Nur Breite, Anschlag, Aufschlag. Keine Höhen.
 - Symbole nur zur Darstellung: Unterverteilung, Zählerschrank, Wallbox, Steckdose, Schalter, Lichtauslass, Wechselrichter, Batteriespeicher, Hausanschlusskasten.
 - Bemaßung immer sichtbar: Raummaße und Wanddicken.
@@ -157,17 +158,16 @@ deploy/
 
 ## 4. Etappen
 
-Jede Etappe ist einzeln lauffähig und wird einzeln gepusht. Größe: klein = halbe Sitzung, mittel = eine Sitzung, groß = muss geteilt werden. Der Vorschlag des Nutzers wurde in kleinere Teile geteilt, weil Etappe 1 als Ganzes nicht in eine Sitzung passt. Das Muster-PDF kommt ganz nach vorn, weil der HottCAD-Test über den ganzen Ansatz entscheidet.
-
+Jede Etappe ist einzeln lauffähig und wird einzeln gepusht. Größe: klein = halbe Sitzung, mittel = eine Sitzung, groß = muss geteilt werden. Der Vorschlag des Nutzers wurde in kleinere Teile geteilt, weil Etappe 1 als Ganzes nicht in eine Sitzung passt.
 ### 1a Gerüst, Zeichenfläche, Muster-PDF für HottCAD
 Ziel: Ein lauffähiges Projekt mit Zeichenfläche und einem Muster-PDF, das HottCAD testen kann.
-- [ ] Vite-Projekt mit TypeScript, Vitest, Ordnerstruktur, README
-- [ ] Canvas im Querformat, Raster, Zoom und Verschieben mit zwei Fingern
-- [ ] Pointer-Eingabe: Stift zeichnet, Finger verschiebt; Handballen-Filter
-- [ ] Freihand-Strich wird angezeigt (noch ohne Erkennung)
-- [ ] Muster-PDF: Rechteck 4,00 x 3,00 m und L-Raum in 1:50, Maßlinien, Maßstabsbalken, Maßstabsangabe, A4 quer
-- [ ] Veröffentlichte Vorschau einrichten
-Testen auf dem Tablet: Zeichnen mit Pencil und Finger, Handballen liegt auf, Zoom. Muster-PDF herunterladen und in HottCAD einlesen (siehe Abschnitt 5).
+- [x] Vite-Projekt mit TypeScript, Vitest, Ordnerstruktur (README folgt in 1f)
+- [x] Canvas im Querformat, Raster, Zoom und Verschieben mit zwei Fingern
+- [x] Pointer-Eingabe: Stift zeichnet, Finger verschiebt; Handballen-Filter
+- [x] Freihand-Strich wird angezeigt (noch ohne Erkennung)
+- [x] Muster-PDF: Rechteck 4,00 x 3,00 m und L-Raum in 1:50, Maßlinien, Maßstabsbalken, Maßstabsangabe, A4 quer
+- [x] Veröffentlichte Vorschau einrichten
+Testen auf dem Tablet: Zeichnen mit Pencil und Finger, Handballen liegt auf, Zoom. Muster-PDF herunterladen und ansehen.
 Abhängigkeiten: keine. Größe: mittel, eine Sitzung. Ort: Cloud.
 
 ### 1b Formenerkennung
@@ -302,8 +302,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 
 ## 5. Frühe Risiko-Tests
 
-1. **HottCAD liest das Muster-PDF mit Maßstab** (nach 1a, vor 1b). Muster-PDF in HottCAD importieren. Prüfen: Werden die Linien als Linien erkannt? Stimmen 4,00 m? Übernimmt HottCAD den Maßstab selbst, oder muss man ihn eingeben oder eine Strecke kalibrieren? Ergebnis hier eintragen. Wenn es nicht klappt: Linienart, Einheiten oder Seitenaufbau anpassen, zur Not ein zweites Muster ohne Rand. Erst danach geht es weiter.
-   Ergebnis: _noch offen_
+1. **HottCAD-Import:** vom Nutzer bereits getestet, funktioniert. Kein weiterer Test und keine Rückfragen dazu. Die App liefert nur das PDF.
+   Ergebnis: erledigt
 2. **Pencil, Finger und Handballen** (nach 1a) auf iPad und einem Android-Tablet mit Stift. Prüfen: Stift zeichnet, Handballen erzeugt keine Striche, zwei Finger zoomen.
    Ergebnis: _noch offen_
 3. **Offline im Browser** (nach 1f). App installieren, Flugmodus, App neu öffnen, PDF erzeugen. Auf iPad und Android.
@@ -316,7 +316,6 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 ## 6. Risiken und offene Punkte
 
 - **Formenerkennung ist der schwierigste Teil.** Wackelige Striche, abgerundete Ecken und kurze Schrägen sind schwer zu unterscheiden. Gegenmittel: allgemeines 45°-Vieleck statt Formenkatalog, Testsammlung mit echten Strichen, einstellbare Toleranzen und notfalls Korrektur von Hand (Ecke ziehen, Maß eintippen).
-- **HottCAD-Import ist unbestätigt.** Wenn HottCAD den Maßstab nicht übernimmt, muss der Nutzer beim Import eine bekannte Strecke kalibrieren. Der Maßstabsbalken und eine bemaßte Strecke im PDF helfen dabei.
 - **Maße und geschlossene Form.** Beim Eintippen aller Kantenlängen kann die Form rechnerisch nicht schließen (Messfehler vor Ort). Die Ausgleichskante löst das, zeigt aber die Abweichung an.
 - **Zwischenwand-Erkennung** kann falsch auslösen, wenn Räume zufällig nah liegen. Darum fragt die App immer nach, statt selbst zu entscheiden.
 - **iPad-Speicher.** Safari kann Daten von nicht installierten Web-Apps nach einigen Tagen ohne Nutzung löschen. Die App muss installiert sein. Der Server ist die zweite Sicherung, darum regelmäßig hochladen.

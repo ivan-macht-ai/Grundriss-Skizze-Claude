@@ -1,0 +1,160 @@
+/* Oberfläche: eine Leiste oben, die Zeichenfläche, eine Statuszeile unten.
+   Farben nur über Variablen, damit hell und dunkel sauber umschalten. */
+:root {
+  --bg: #f4f5f3;
+  --leiste: #ffffff;
+  --text: #1c2321;
+  --text-leise: #5b6663;
+  --linie: #d5dad7;
+  --akzent: #0b6b57;
+  --akzent-text: #ffffff;
+  --flaeche: #fbfcfb;
+  --raster-fein: #e7ebe8;
+  --raster-grob: #cfd6d2;
+  --raster-text: #77827e;
+  --raster-achse: #8fa39b;
+  --strich: #12312a;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #131716;
+    --leiste: #1b211f;
+    --text: #e6ebe8;
+    --text-leise: #9aa7a2;
+    --linie: #2f3835;
+    --akzent: #3fb99b;
+    --akzent-text: #06201a;
+    --flaeche: #171c1a;
+    --raster-fein: #202725;
+    --raster-grob: #2e3835;
+    --raster-text: #78867f;
+    --raster-achse: #4d6159;
+    --strich: #dcefe8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #131716;
+  --leiste: #1b211f;
+  --text: #e6ebe8;
+  --text-leise: #9aa7a2;
+  --linie: #2f3835;
+  --akzent: #3fb99b;
+  --akzent-text: #06201a;
+  --flaeche: #171c1a;
+  --raster-fein: #202725;
+  --raster-grob: #2e3835;
+  --raster-text: #78867f;
+  --raster-achse: #4d6159;
+  --strich: #dcefe8;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.leiste {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px max(12px, env(safe-area-inset-left, 0px)) 8px max(12px, env(safe-area-inset-right, 0px));
+  background: var(--leiste);
+  border-bottom: 1px solid var(--linie);
+}
+.titel {
+  margin-right: 8px;
+}
+.platz {
+  flex: 1;
+}
+button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  background: var(--leiste);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+button:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+button.haupt {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--akzent-text);
+  font-weight: 600;
+}
+#flaeche {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: var(--flaeche);
+  touch-action: none;
+  display: block;
+}
+.status {
+  padding: 6px max(12px, env(safe-area-inset-left, 0px));
+  font-size: 12px;
+  color: var(--text-leise);
+  background: var(--leiste);
+  border-top: 1px solid var(--linie);
+  white-space: nowrap;
+  overflow-x: auto;
+}
+.pdf-fenster {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.pdf-kopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--leiste);
+  border-bottom: 1px solid var(--linie);
+}
+.pdf-fenster iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+.pdf-hinweis {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-leise);
+  background: var(--leiste);
+}
+[hidden] {
+  display: none !important;
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Grundriss-Skizze</title>
+</head>
+<body>
+  <div id="app">
+    <header class="leiste">
+      <strong class="titel">Skizze</strong>
+      <button id="btn-zurueck" type="button">↶ Zurück</button>
+      <button id="btn-loeschen" type="button">Alles löschen</button>
+      <button id="btn-finger" type="button" aria-pressed="true">Finger: zeichnet</button>
+      <button id="btn-ansicht" type="button">Ansicht zentrieren</button>
+      <span class="platz"></span>
+      <button id="btn-pdf" type="button" class="haupt">Muster-PDF</button>
+    </header>
+    <canvas id="flaeche" aria-label="Zeichenfläche"></canvas>
+    <footer class="status" id="status" aria-live="polite"></footer>
+    <div id="pdf-fenster" class="pdf-fenster" hidden>
+      <div class="pdf-kopf">
+        <span>Muster-PDF, A4 quer, Maßstab 1:50</span>
+        <button id="pdf-zu" type="button">Schließen</button>
+      </div>
+      <iframe id="pdf-rahmen" title="PDF-Vorschau"></iframe>
+      <p id="pdf-hinweis" class="pdf-hinweis"></p>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
