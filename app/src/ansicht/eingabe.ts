@@ -24,6 +24,11 @@ export interface EingabeZustand {
   handballenIgnoriert: number;
   /** Wie oft der Browser eine Berührung selbst übernommen hat (zum Beispiel zum Scrollen der Seite) */
   abgebrochen: number;
+  /** Mausrad-/Touchpad-Ereignisse: Anzahl und zuletzt gemeldete Werte (zur Fehlersuche) */
+  radAnzahl: number;
+  radLetzte: string;
+  /** Berührungen, die gerade auf der Fläche liegen */
+  beruehrungen: number;
   letzteArt: string;
 }
 
@@ -119,6 +124,7 @@ export function verbindeEingabe(
     canvas.setPointerCapture(e.pointerId);
     const p = lokal(e);
     zeiger.set(e.pointerId, { art: e.pointerType, x: p.x, y: p.y });
+    zustand.beruehrungen = zeiger.size;
 
     if (e.pointerType === 'touch' && zweiFinger().length >= 2) {
       // Zweiter Finger: laufenden Strich oder Raumzug verwerfen, Geste starten
@@ -229,6 +235,7 @@ export function verbindeEingabe(
       }
     }
     zeiger.delete(e.pointerId);
+    zustand.beruehrungen = zeiger.size;
     if (zweiFinger().length < 2) {
       letzteMitte = null;
       letzterAbstand = 0;
@@ -247,6 +254,9 @@ export function verbindeEingabe(
     'wheel',
     (e) => {
       e.preventDefault();
+      zustand.radAnzahl++;
+      zustand.radLetzte = `x ${Math.round(e.deltaX)}, y ${Math.round(e.deltaY)}${e.ctrlKey ? ', Strg' : ''}`;
+      haken.zustandGeaendert();
       const r = canvas.getBoundingClientRect();
       const px = e.clientX - r.left;
       const py = e.clientY - r.top;
