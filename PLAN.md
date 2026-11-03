@@ -7,7 +7,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 
 - [x] 1a Gerüst, Zeichenfläche, Muster-PDF (Stift und Handballen auf dem Tablet noch zu testen)
 - [x] 1b Formenerkennung (von Opus geprüft, Befunde eingearbeitet)
-- [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung
+- [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung (Kern fertig, Reste siehe Etappe)
 - [ ] 1d Wände und Zwischenwände
 - [ ] 1e Türen und Fenster
 - [ ] 1f Fertiges PDF und Offline-Betrieb (PWA)
@@ -178,17 +178,17 @@ Ziel: Grobe Striche werden zu sauberen Räumen.
 - [x] Testsammlung mit künstlich verwackelten Strichen (Aufnahme echter Striche vom Tablet: noch offen)
 - [x] Einstellungsseite für die Toleranzen
 Testen: Verschiedene Formen schief und wackelig zeichnen. Toleranzen ändern und Wirkung sehen. Echte Striche aufnehmen und zum Testen übergeben.
-Zusätzlich gebaut: Leisten verschiebbar, Werkzeuge Zeichnen/Verschieben, Zoomknöpfe.
+Zusätzlich gebaut: Leisten verschiebbar und beim Ziehen sofort an der Kante eingerastet, Werkzeuge Zeichnen/Auswählen, Zoomknöpfe. Verschieben der Ansicht nur mit zwei Fingern (Wunsch des Nutzers), Verlauf mit Zurück/Vor.
 Abhängigkeiten: 1a. Größe: mittel bis groß. Falls die Sitzung nicht reicht: 1b-1 Rechteck und L, 1b-2 U, T, Schrägen und Einstellungen. Ort: Cloud.
 
 ### 1c Räume bearbeiten, Maße eintippen, Bemaßung
 Ziel: Räume bekommen exakte Maße und eine Bemaßung wie in der Bauzeichnung.
-- [ ] Werkzeug "Auswählen": Raum antippen, markieren; Raum benennen (zum Beispiel Keller, Technikraum)
-- [ ] Maße außen: Bemaßung außerhalb des Raums (Wunsch des Nutzers); Innenmaße bleiben wählbar
-- [ ] Raum antippen, Kante wählen, Länge eintippen; Ausgleichskante hält die Form geschlossen
-- [ ] Raum verschieben, drehen in 90°-Schritten, löschen, benennen
-- [ ] Mehrere Räume; Räume rasten aneinander an
-- [ ] Bemaßung: Kantenlängen innen, Gesamtmaße außen, Raumname und Fläche
+- [x] Werkzeug "Auswählen": Raum antippen, markieren; Raum benennen (zum Beispiel Keller, Technikraum)
+- [x] Maße außen: Maßlinien außerhalb des Raums (Wunsch des Nutzers). Offen: Umschalter für Innen/Außen, Kollisionen zwischen Nachbarräumen
+- [x] Doppeltippen auf Raum: Name und alle Seitenlängen eintippen (Wand am Seitenende wandert mit)
+- [x] Raum verschieben, löschen, benennen. Offen: drehen in 90°-Schritten
+- [x] Mehrere Räume; Räume rasten aneinander ein (bündig)
+- [ ] Bemaßung: Gesamtmaße außen (Hüllmaß), Umschalter innen/außen; Raumname und Fläche sind da
 Testen: Keller mit 3 Räumen anlegen, Maße eintippen, Maße lesen.
 Abhängigkeiten: 1b. Größe: mittel. Ort: Cloud.
 

@@ -31,9 +31,9 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19z M14 7l3 3"/></svg>
           <span>Zeichnen</span>
         </button>
-        <button type="button" class="wz" data-werkzeug="hand" aria-pressed="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M12 3l-3 3 M12 3l3 3 M12 21l-3-3 M12 21l3-3 M3 12l3-3 M3 12l3 3 M21 12l-3-3 M21 12l-3 3"/></svg>
-          <span>Verschieben</span>
+        <button type="button" class="wz" data-werkzeug="auswaehlen" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v15l4-4 3 7 3-1-3-7h6z"/></svg>
+          <span>Auswählen</span>
         </button>
         <hr />
         <button type="button" class="wz" id="btn-zurueck" disabled>
@@ -70,6 +70,28 @@
     </main>
 
     <footer class="status" id="status" aria-live="polite"></footer>
+
+    <div id="raum-dialog" class="dialog" hidden>
+      <div class="dialog-tafel" role="dialog" aria-modal="true" aria-labelledby="raum-titel">
+        <div class="dialog-kopf">
+          <strong id="raum-titel">Raum bearbeiten</strong>
+          <button id="raum-abbrechen" type="button">Abbrechen</button>
+        </div>
+        <div class="dialog-inhalt">
+          <div class="feld">
+            <label for="raum-name">Name</label>
+            <input id="raum-name" type="text" autocomplete="off" placeholder="zum Beispiel Keller" maxlength="40" />
+          </div>
+          <p class="hilfe">Seiten (innen gemessen). Du kannst Zahlen so schreiben: <strong>4,20</strong> oder <strong>420</strong> oder <strong>420 cm</strong>. Ändert sich eine Länge, wandert die Wand am Ende der Seite mit.</p>
+          <div id="raum-seiten"></div>
+          <p id="raum-fehler" class="fehlertext" role="alert" hidden></p>
+          <div class="dialog-knoepfe">
+            <button id="raum-uebernehmen" type="button" class="haupt">Übernehmen</button>
+            <button id="raum-loeschen" type="button" class="gefahr-knopf">Raum löschen</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="einstellungen" class="dialog" hidden>
       <div class="dialog-tafel" role="dialog" aria-modal="true" aria-labelledby="einstellungen-titel">

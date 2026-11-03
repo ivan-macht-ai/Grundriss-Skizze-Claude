@@ -8,24 +8,33 @@ export interface RaumFarben {
   linie: string;
   text: string;
   leise: string;
+  auswahl: string;
 }
 
 export const kommaZahl = (wert: number, stellen = 2): string => wert.toFixed(stellen).replace('.', ',');
 
-export function zeichneRaeume(ctx: CanvasRenderingContext2D, vp: Viewport, raeume: Raum[], farben: RaumFarben): void {
+export function zeichneRaeume(
+  ctx: CanvasRenderingContext2D,
+  vp: Viewport,
+  raeume: Raum[],
+  farben: RaumFarben,
+  auswahlId: number | null,
+): void {
   for (const raum of raeume) {
+    const gewaehlt = raum.id === auswahlId;
     const sp = raum.ecken.map((p) => toScreen(vp, p.x, p.y));
     ctx.beginPath();
     sp.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
     ctx.closePath();
     ctx.fillStyle = farben.fuell;
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = gewaehlt ? 4.5 : 3;
     ctx.lineJoin = 'miter';
-    ctx.strokeStyle = farben.linie;
+    ctx.strokeStyle = gewaehlt ? farben.auswahl : farben.linie;
     ctx.stroke();
 
-    const c = toScreen(vp, schwerpunkt(raum.ecken).x, schwerpunkt(raum.ecken).y);
+    const sw = schwerpunkt(raum.ecken);
+    const c = toScreen(vp, sw.x, sw.y);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = farben.text;
@@ -35,9 +44,10 @@ export function zeichneRaeume(ctx: CanvasRenderingContext2D, vp: Viewport, raeum
     ctx.font = '13px system-ui, sans-serif';
     ctx.fillText(`${kommaZahl(flaeche(raum.ecken), 2)} m²`, c.x, c.y + 10);
 
-    // Länge jeder Seite, innen neben der Linie
+    // Maße außerhalb: Maßlinie mit Endstrichen, Zahl daneben
     ctx.font = '12px system-ui, sans-serif';
-    ctx.fillStyle = farben.text;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = farben.leise;
     for (let i = 0; i < raum.ecken.length; i++) {
       const j = (i + 1) % raum.ecken.length;
       const laenge = dist(raum.ecken[i], raum.ecken[j]);
@@ -49,13 +59,34 @@ export function zeichneRaeume(ctx: CanvasRenderingContext2D, vp: Viewport, raeum
       const my = (a.y + b.y) / 2;
       let nx = -(b.y - a.y) / bild;
       let ny = (b.x - a.x) / bild;
-      if (nx * (c.x - mx) + ny * (c.y - my) < 0) {
+      if (nx * (c.x - mx) + ny * (c.y - my) > 0) {
         nx = -nx;
         ny = -ny;
       }
+      const versatz = 20;
+      const ax = a.x + nx * versatz;
+      const ay = a.y + ny * versatz;
+      const bx = b.x + nx * versatz;
+      const by = b.y + ny * versatz;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      // Hilfslinien von den Ecken zur Maßlinie
+      ctx.moveTo(a.x + nx * 4, a.y + ny * 4);
+      ctx.lineTo(ax + nx * 4, ay + ny * 4);
+      ctx.moveTo(b.x + nx * 4, b.y + ny * 4);
+      ctx.lineTo(bx + nx * 4, by + ny * 4);
+      // Endstriche (schräg)
+      const tx = (b.x - a.x) / bild;
+      const ty = (b.y - a.y) / bild;
+      for (const [qx, qy] of [[ax, ay], [bx, by]]) {
+        ctx.moveTo(qx - (tx + nx) * 4, qy - (ty + ny) * 4);
+        ctx.lineTo(qx + (tx + nx) * 4, qy + (ty + ny) * 4);
+      }
+      ctx.stroke();
       const text = `${kommaZahl(laenge)} m`;
-      // Abstand zur Linie: halbe Textausdehnung in Richtung der Normalen plus etwas Luft
-      const abstand = (ctx.measureText(text).width / 2) * Math.abs(nx) + 7 * Math.abs(ny) + 8;
+      const abstand = versatz + (ctx.measureText(text).width / 2) * Math.abs(nx) + 8 * Math.abs(ny) + 6;
+      ctx.fillStyle = farben.text;
       ctx.fillText(text, mx + nx * abstand, my + ny * abstand);
     }
   }

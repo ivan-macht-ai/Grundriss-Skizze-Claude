@@ -1,10 +1,12 @@
 // Eingabe über Pointer-Events: Stift, Finger und Maus über eine Schnittstelle.
 // Regeln:
-//  - Werkzeug "Zeichnen": Stift und Maus zeichnen. Ein Finger zeichnet nur, solange noch kein Stift gesehen wurde.
-//  - Werkzeug "Verschieben": Stift, Finger und Maus verschieben die Ansicht.
-//  - Zwei Finger verschieben und zoomen immer.
+//  - Zwei Finger verschieben und zoomen immer (Werkzeug egal).
+//  - Werkzeug "Zeichnen": Stift und Maus zeichnen. Ein Finger zeichnet nur, solange noch kein Stift gesehen wurde,
+//    danach verschiebt er die Ansicht.
+//  - Werkzeug "Auswählen": Raum antippen wählt ihn, Ziehen verschiebt ihn, Doppeltippen öffnet das Bearbeiten.
+//    Ziehen auf leerer Fläche verschiebt die Ansicht.
 //  - Solange der Stift aufliegt, werden Finger ignoriert (Handballen).
-//  - Maus: Umschalt + ziehen verschiebt; Mausrad zoomt; Trackpad-Wischen verschiebt.
+//  - Maus: Umschalt + ziehen verschiebt die Ansicht; Mausrad zoomt; Trackpad-Wischen verschiebt.
 
 import { panBy, toWorld, zoomAt, type Viewport } from './viewport';
 
@@ -13,7 +15,7 @@ export interface Strich {
   art: 'pen' | 'touch' | 'mouse';
 }
 
-export type Werkzeug = 'zeichnen' | 'hand';
+export type Werkzeug = 'zeichnen' | 'auswaehlen';
 
 export interface EingabeZustand {
   werkzeug: Werkzeug;
@@ -29,6 +31,15 @@ export interface EingabeHaken {
   zeichneNeu(): void;
   zustandGeaendert(): void;
   zeigerBewegt(weltX: number, weltY: number): void;
+  /** Auswählen: welcher Raum liegt an dieser Stelle (oberster) oder keiner */
+  findeRaum(weltX: number, weltY: number): number | null;
+  waehleRaum(id: number | null): void;
+  startBewegung(id: number): void;
+  /** Gesamte Verschiebung seit dem Start in Metern */
+  bewegung(dx: number, dy: number): void;
+  endeBewegung(bewegt: boolean): void;
+  abbruchBewegung(): void;
+  doppeltippe(id: number): void;
 }
 
 interface Zeiger {
@@ -36,6 +47,10 @@ interface Zeiger {
   x: number;
   y: number;
 }
+
+const TIPP_WEG = 6; // Pixel: weniger Bewegung zählt als Tippen
+const DOPPEL_ZEIT = 420; // Millisekunden
+const DOPPEL_WEG = 28; // Pixel
 
 export function verbindeEingabe(
   canvas: HTMLCanvasElement,
@@ -50,7 +65,14 @@ export function verbindeEingabe(
   let letzteMitte: { x: number; y: number } | null = null;
   let letzterAbstand = 0;
 
-  const lokal = (e: PointerEvent) => {
+  // Raum ziehen (Werkzeug Auswählen)
+  let bewegId: number | null = null; // Zeiger-ID
+  let bewegRaum: number | null = null;
+  let bewegStart: { sx: number; sy: number; wx: number; wy: number } | null = null;
+  let bewegt = false;
+  let letzterTipp: { zeit: number; sx: number; sy: number; raum: number } | null = null;
+
+  const lokal = (e: { clientX: number; clientY: number }) => {
     const r = canvas.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
@@ -60,6 +82,14 @@ export function verbindeEingabe(
     strich = null;
     strichId = null;
     haken.zeichneNeu();
+  };
+
+  const brecheBewegungAb = () => {
+    if (bewegRaum !== null) haken.abbruchBewegung();
+    bewegId = null;
+    bewegRaum = null;
+    bewegStart = null;
+    bewegt = false;
   };
 
   const zweiFinger = (): Zeiger[] => [...zeiger.values()].filter((z) => z.art === 'touch');
@@ -88,21 +118,35 @@ export function verbindeEingabe(
     zeiger.set(e.pointerId, { art: e.pointerType, x: p.x, y: p.y });
 
     if (e.pointerType === 'touch' && zweiFinger().length >= 2) {
-      // Zweiter Finger: laufenden Strich verwerfen, Geste starten
+      // Zweiter Finger: laufenden Strich oder Raumzug verwerfen, Geste starten
       if (strich) beendeStrich(false);
+      brecheBewegungAb();
       verschiebeId = null;
       startGeste();
       haken.zustandGeaendert();
       return;
     }
-    const verschiebt =
-      zustand.werkzeug === 'hand' ||
-      (e.pointerType === 'mouse' && e.shiftKey) ||
-      (e.pointerType === 'touch' && zustand.stiftGesehen);
-    if (verschiebt) {
+
+    const w = toWorld(haken.holeAnsicht(), p.x, p.y);
+    if (zustand.werkzeug === 'auswaehlen') {
+      if (e.pointerType === 'mouse' && e.shiftKey) {
+        verschiebeId = e.pointerId;
+      } else {
+        const treffer = haken.findeRaum(w.x, w.y);
+        haken.waehleRaum(treffer);
+        if (treffer !== null) {
+          bewegId = e.pointerId;
+          bewegRaum = treffer;
+          bewegStart = { sx: p.x, sy: p.y, wx: w.x, wy: w.y };
+          bewegt = false;
+          haken.startBewegung(treffer);
+        } else {
+          verschiebeId = e.pointerId;
+        }
+      }
+    } else if ((e.pointerType === 'mouse' && e.shiftKey) || (e.pointerType === 'touch' && zustand.stiftGesehen)) {
       verschiebeId = e.pointerId;
     } else {
-      const w = toWorld(haken.holeAnsicht(), p.x, p.y);
       strich = { punkte: [w], art: e.pointerType === 'pen' ? 'pen' : e.pointerType === 'touch' ? 'touch' : 'mouse' };
       strichId = e.pointerId;
     }
@@ -131,6 +175,11 @@ export function verbindeEingabe(
       haken.setzeAnsicht(vp);
       return;
     }
+    if (e.pointerId === bewegId && bewegStart) {
+      if (!bewegt && Math.hypot(p.x - bewegStart.sx, p.y - bewegStart.sy) > TIPP_WEG) bewegt = true;
+      if (bewegt) haken.bewegung(wp.x - bewegStart.wx, wp.y - bewegStart.wy);
+      return;
+    }
     if (e.pointerId === verschiebeId) {
       haken.setzeAnsicht(panBy(haken.holeAnsicht(), dx, dy));
       return;
@@ -149,6 +198,33 @@ export function verbindeEingabe(
     if (e.pointerType === 'pen') stiftAuf = false;
     if (e.pointerId === strichId) beendeStrich(!abbruch);
     if (e.pointerId === verschiebeId) verschiebeId = null;
+    if (e.pointerId === bewegId && bewegRaum !== null && bewegStart) {
+      const raum = bewegRaum;
+      const start = bewegStart;
+      const warBewegt = bewegt;
+      bewegId = null;
+      bewegRaum = null;
+      bewegStart = null;
+      bewegt = false;
+      if (abbruch) haken.abbruchBewegung();
+      else {
+        haken.endeBewegung(warBewegt);
+        if (!warBewegt) {
+          // Tippen; zwei Tipps kurz hintereinander auf denselben Raum öffnen das Bearbeiten
+          const jetzt = performance.now();
+          const l = letzterTipp;
+          if (
+            l &&
+            l.raum === raum &&
+            jetzt - l.zeit < DOPPEL_ZEIT &&
+            Math.hypot(l.sx - start.sx, l.sy - start.sy) < DOPPEL_WEG
+          ) {
+            letzterTipp = null;
+            haken.doppeltippe(raum);
+          } else letzterTipp = { zeit: jetzt, sx: start.sx, sy: start.sy, raum };
+        }
+      }
+    }
     zeiger.delete(e.pointerId);
     if (zweiFinger().length < 2) {
       letzteMitte = null;

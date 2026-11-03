@@ -158,8 +158,8 @@ button:focus-visible {
   touch-action: none;
   cursor: crosshair;
 }
-#flaeche.hand {
-  cursor: grab;
+#flaeche.zeiger {
+  cursor: default;
 }
 
 /* Schwebende Leisten */
@@ -433,4 +433,63 @@ button:focus-visible {
 .schiene.waagerecht .griff svg {
   width: 22px;
   height: 26px;
+}
+
+/* Raum bearbeiten */
+.feld {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+.feld label {
+  font-weight: 600;
+}
+input[type='text'] {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--linie);
+  border-radius: 12px;
+  background: var(--flaeche);
+  color: var(--text);
+  font: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+input[type='text']:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: 1px;
+}
+.seiten-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+.seiten-zeile label {
+  flex: 1;
+  min-width: 0;
+}
+.seiten-zeile small {
+  display: block;
+  color: var(--text-leise);
+}
+.seiten-zeile input {
+  width: 150px;
+  text-align: right;
+}
+.fehlertext {
+  margin: 8px 0 0;
+  color: var(--gefahr);
+  font-weight: 600;
+}
+.dialog-knoepfe .haupt {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--akzent-text);
+  font-weight: 600;
+}
+.dialog-knoepfe .gefahr-knopf {
+  color: var(--gefahr);
 }

@@ -1,5 +1,5 @@
 // Macht eine schwebende Leiste verschiebbar: am Griff anfassen und ziehen.
-// Beim Loslassen rastet sie an der nächsten Kante der Zeichenfläche ein. An der linken oder rechten Kante steht sie
+// Schon beim Ziehen springt sie an die nächste Kante der Zeichenfläche. An der linken oder rechten Kante steht sie
 // senkrecht, an der oberen oder unteren Kante waagerecht. Die Position wird im Gerät gemerkt.
 import { ladeJson, loescheSchluessel, speichereJson } from '../speicher/einstellungen';
 
@@ -46,22 +46,6 @@ export function macheVerschiebbar(el: HTMLElement, griff: HTMLElement, buehne: H
     }
   };
 
-  const aktuellerPlatz = (): Platz => {
-    const r = el.getBoundingClientRect();
-    const b = buehne.getBoundingClientRect();
-    const links = r.left - b.left;
-    const oben = r.top - b.top;
-    const rechts = b.width - (links + r.width);
-    const unten = b.height - (oben + r.height);
-    const kanten: [Kante, number][] = [['links', links], ['rechts', rechts], ['oben', oben], ['unten', unten]];
-    kanten.sort((a, c) => a[1] - c[1]);
-    const kante = kanten[0][0];
-    const entlang = kante === 'links' || kante === 'rechts'
-      ? oben / Math.max(1, b.height - r.height)
-      : links / Math.max(1, b.width - r.width);
-    return { kante, anteil: entlang };
-  };
-
   let platz = ladeJson<Platz>(speicherSchluessel);
   const gueltig = (p: Platz | null): p is Platz =>
     !!p && ['links', 'rechts', 'oben', 'unten'].includes(p.kante) && Number.isFinite(p.anteil);
@@ -72,27 +56,36 @@ export function macheVerschiebbar(el: HTMLElement, griff: HTMLElement, buehne: H
     else if (el.style.left) frei(parseFloat(el.style.left), parseFloat(el.style.top));
   };
 
-  let start: { px: number; py: number; left: number; top: number } | null = null;
+  // Beim Ziehen springt die Leiste sofort an die Kante, die dem Finger am nächsten ist, und stellt sich passend ein.
+  const platzAusZeiger = (e: PointerEvent): Platz => {
+    const b = buehne.getBoundingClientRect();
+    const px = e.clientX - b.left;
+    const py = e.clientY - b.top;
+    const abstaende: [Kante, number][] = [['links', px], ['rechts', b.width - px], ['oben', py], ['unten', b.height - py]];
+    abstaende.sort((x, y) => x[1] - y[1]);
+    const kante = abstaende[0][0];
+    const entlang = kante === 'links' || kante === 'rechts'
+      ? (py - el.offsetHeight / 2 - RAND) / Math.max(1, b.height - el.offsetHeight - 2 * RAND)
+      : (px - el.offsetWidth / 2 - RAND) / Math.max(1, b.width - el.offsetWidth - 2 * RAND);
+    return { kante, anteil: Math.min(1, Math.max(0, entlang)) };
+  };
+
+  let zieht = false;
   griff.style.touchAction = 'none';
   griff.addEventListener('pointerdown', (e) => {
-    const r = el.getBoundingClientRect();
-    const b = buehne.getBoundingClientRect();
-    start = { px: e.clientX, py: e.clientY, left: r.left - b.left, top: r.top - b.top };
-    // Während des Ziehens bleibt die Leiste, wie sie ist; der aktuelle Ort wird fest gesetzt.
-    frei(start.left, start.top);
+    zieht = true;
     griff.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
   griff.addEventListener('pointermove', (e) => {
-    if (!start) return;
-    frei(start.left + e.clientX - start.px, start.top + e.clientY - start.py);
+    if (!zieht) return;
+    platz = platzAusZeiger(e);
+    andocken(platz);
   });
   const ende = () => {
-    if (!start) return;
-    start = null;
-    platz = aktuellerPlatz();
-    andocken(platz);
-    speichereJson(speicherSchluessel, platz);
+    if (!zieht) return;
+    zieht = false;
+    if (gueltig(platz)) speichereJson(speicherSchluessel, platz);
   };
   griff.addEventListener('pointerup', ende);
   griff.addEventListener('pointercancel', ende);
