@@ -10,21 +10,28 @@
     <header class="kopf">
       <strong class="titel">Skizze</strong>
       <span class="platz"></span>
+      <button id="btn-einstellungen" type="button" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 4v6 M9 14v6"/></svg>
+        <span>Einstellungen</span>
+      </button>
       <button id="btn-pdf" type="button" class="haupt">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z M14 3v5h5 M9 13h6 M9 17h6"/></svg>
         <span>Muster-PDF</span>
       </button>
     </header>
 
-    <main class="buehne">
+    <main class="buehne" id="buehne">
       <canvas id="flaeche" aria-label="Zeichenfläche"></canvas>
 
-      <nav class="schiene schiene-links" aria-label="Werkzeuge">
-        <button type="button" class="wz" id="wz-zeichnen" data-werkzeug="zeichnen" aria-pressed="true">
+      <nav class="schiene schiene-links" id="leiste-werkzeuge" aria-label="Werkzeuge">
+        <div class="griff" id="griff-werkzeuge" role="button" aria-label="Leiste verschieben">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9h.01 M12 9h.01 M16 9h.01 M8 14h.01 M12 14h.01 M16 14h.01"/></svg>
+        </div>
+        <button type="button" class="wz" data-werkzeug="zeichnen" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19z M14 7l3 3"/></svg>
           <span>Zeichnen</span>
         </button>
-        <button type="button" class="wz" id="wz-hand" data-werkzeug="hand" aria-pressed="false">
+        <button type="button" class="wz" data-werkzeug="hand" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M3 12h18 M12 3l-3 3 M12 3l3 3 M12 21l-3-3 M12 21l3-3 M3 12l3-3 M3 12l3 3 M21 12l-3-3 M21 12l-3 3"/></svg>
           <span>Verschieben</span>
         </button>
@@ -44,7 +51,10 @@
         </button>
       </nav>
 
-      <div class="schiene schiene-zoom" role="group" aria-label="Ansicht">
+      <div class="schiene schiene-zoom" id="leiste-zoom" role="group" aria-label="Ansicht">
+        <div class="griff" id="griff-zoom" role="button" aria-label="Leiste verschieben">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9h.01 M12 9h.01 M16 9h.01 M8 14h.01 M12 14h.01 M16 14h.01"/></svg>
+        </div>
         <button type="button" class="wz klein" id="btn-plus" aria-label="Vergrößern">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
         </button>
@@ -55,9 +65,28 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5"/></svg>
         </button>
       </div>
+
+      <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     </main>
 
     <footer class="status" id="status" aria-live="polite"></footer>
+
+    <div id="einstellungen" class="dialog" hidden>
+      <div class="dialog-tafel" role="dialog" aria-modal="true" aria-labelledby="einstellungen-titel">
+        <div class="dialog-kopf">
+          <strong id="einstellungen-titel">Einstellungen der Raumerkennung</strong>
+          <button id="einstellungen-zu" type="button">Fertig</button>
+        </div>
+        <div class="dialog-inhalt">
+          <p class="hilfe">Die App macht aus einem groben Strich einen sauberen Raum. Hier stellst du ein, wie großzügig sie dabei ist. Änderungen gelten sofort für den nächsten Strich.</p>
+          <div id="regler"></div>
+          <div class="dialog-knoepfe">
+            <button id="toleranz-standard" type="button">Erkennung auf Standard</button>
+            <button id="leisten-standard" type="button">Leisten an Ausgangsplatz</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="pdf-fenster" class="pdf-fenster" hidden>
       <div class="pdf-kopf">

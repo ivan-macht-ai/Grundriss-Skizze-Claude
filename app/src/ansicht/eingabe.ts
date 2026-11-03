@@ -177,6 +177,8 @@ export function verbindeEingabe(
     { passive: false },
   );
 
+  // Verhindert, dass die Seite beim Wischen mit zwei Fingern (auch nach oben/unten) mitscrollt oder zoomt.
+  canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   return { aktuellerStrich: () => strich };
 }

@@ -6,7 +6,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 ## Fortschritt
 
 - [x] 1a Gerüst, Zeichenfläche, Muster-PDF (Stift und Handballen auf dem Tablet noch zu testen)
-- [ ] 1b Formenerkennung
+- [x] 1b Formenerkennung (Opus-Prüfung läuft, Stand siehe unten)
 - [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung
 - [ ] 1d Wände und Zwischenwände
 - [ ] 1e Türen und Fenster
@@ -172,12 +172,13 @@ Abhängigkeiten: keine. Größe: mittel, eine Sitzung. Ort: Cloud.
 
 ### 1b Formenerkennung
 Ziel: Grobe Striche werden zu sauberen Räumen.
-- [ ] Verfahren nach Abschnitt 3.3, Toleranzen in `toleranzen.ts`
-- [ ] Rechteck, L, U, T, mit 45°-Schrägen
-- [ ] Hinweis bei nicht erkannter Form
-- [ ] Testsammlung mit künstlich verwackelten Strichen, dazu Aufnahmefunktion für echte Striche
-- [ ] Einstellungsseite für die Toleranzen
+- [x] Verfahren nach Abschnitt 3.3, Toleranzen in `app/src/config/toleranzen.ts`
+- [x] Rechteck, L, U, T, mit 45°-Schrägen
+- [x] Hinweis bei nicht erkannter Form
+- [x] Testsammlung mit künstlich verwackelten Strichen (Aufnahme echter Striche vom Tablet: noch offen)
+- [x] Einstellungsseite für die Toleranzen
 Testen: Verschiedene Formen schief und wackelig zeichnen. Toleranzen ändern und Wirkung sehen. Echte Striche aufnehmen und zum Testen übergeben.
+Zusätzlich gebaut: Leisten verschiebbar, Werkzeuge Zeichnen/Verschieben, Zoomknöpfe.
 Abhängigkeiten: 1a. Größe: mittel bis groß. Falls die Sitzung nicht reicht: 1b-1 Rechteck und L, 1b-2 U, T, Schrägen und Einstellungen. Ort: Cloud.
 
 ### 1c Räume bearbeiten, Maße eintippen, Bemaßung
