@@ -35,3 +35,13 @@ export function startAnsicht(breite: number, hoehe: number): Viewport {
   const scale = Math.min(breite, hoehe) / 8;
   return { scale, ox: Math.min(60, breite * 0.08), oy: hoehe - Math.min(60, hoehe * 0.1) };
 }
+
+/** Ansicht, die einen Bereich (Meter) mittig und mit Rand zeigt. */
+export function passeAn(box: { minX: number; minY: number; maxX: number; maxY: number }, breite: number, hoehe: number, rand = 90): Viewport {
+  const bw = Math.max(0.5, box.maxX - box.minX);
+  const bh = Math.max(0.5, box.maxY - box.minY);
+  const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min((breite - 2 * rand) / bw, (hoehe - 2 * rand) / bh, 160)));
+  const mx = (box.minX + box.maxX) / 2;
+  const my = (box.minY + box.maxY) / 2;
+  return { scale, ox: breite / 2 - mx * scale, oy: hoehe / 2 + my * scale };
+}

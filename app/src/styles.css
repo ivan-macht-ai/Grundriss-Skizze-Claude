@@ -546,3 +546,86 @@ select:focus-visible {
   outline: 2px solid var(--akzent);
   outline-offset: 1px;
 }
+
+/* Kopfzeile: Skizzenname als Knopf */
+.titelknopf {
+  max-width: 55%;
+  min-width: 0;
+}
+.titelknopf span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* Meine Skizzen */
+.dialog-tafel.breit {
+  width: min(700px, 100%);
+}
+.abschnitt {
+  margin: 18px 0 4px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-leise);
+}
+.skizzen-zeile {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px 0;
+}
+.skizzen-zeile .oeffnen {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  text-align: left;
+  border: 1px solid var(--linie);
+  border-radius: 12px;
+  background: var(--leiste);
+}
+.skizzen-zeile .oeffnen.aktuell {
+  border-color: var(--akzent);
+  box-shadow: inset 0 0 0 1px var(--akzent);
+}
+.skizzen-zeile .text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.skizzen-zeile .text strong,
+.skizzen-zeile .text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skizzen-zeile .text span {
+  font-size: 12.5px;
+  color: var(--text-leise);
+}
+.skizzen-zeile .weg {
+  min-width: 84px;
+  border: 1px solid var(--linie);
+  border-radius: 12px;
+  background: var(--leiste);
+  color: var(--gefahr);
+}
+.skizzen-zeile .weg.scharf {
+  background: var(--gefahr);
+  color: var(--leiste);
+}
+svg.vorschau {
+  flex: none;
+  width: 76px;
+  height: 56px;
+  border-radius: 8px;
+  background: var(--flaeche);
+  fill: var(--raum-fuell);
+  stroke: var(--strich);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}

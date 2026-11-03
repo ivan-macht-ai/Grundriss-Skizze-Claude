@@ -1,7 +1,7 @@
 import './styles.css';
 import { verbindeEingabe, type EingabeZustand, type OeffnungsRef, type Strich, type Werkzeug } from './ansicht/eingabe';
 import { zeichneRaster, type RasterFarben } from './ansicht/raster';
-import { startAnsicht, toScreen, zoomAt, type Viewport } from './ansicht/viewport';
+import { passeAn, startAnsicht, toScreen, zoomAt, type Viewport } from './ansicht/viewport';
 import { STANDARD_TOLERANZEN, TOLERANZ_BESCHREIBUNG, type Toleranzen } from './config/toleranzen';
 import { erkenneRaum } from './erkennung/erkenne';
 import { flaeche, schwerpunkt } from './geometrie/polygon';
@@ -13,7 +13,10 @@ import { findeKante, findeOeffnung, kante as seitenKante, neueOeffnung, passeOef
 import type { Oeffnung } from './modell/typen';
 import { leseBreite, leseLaenge, zeigeLaenge } from './modell/zahlen';
 import { macheVerschiebbar } from './oberflaeche/verschiebbar';
-import { erzeugeGrundrissPdf, type Kunde } from './pdf/grundriss';
+import { erzeugeGrundrissPdf, huelle, type Kunde } from './pdf/grundriss';
+import { leseSkizzenDatei, neueId, neueSkizze, skizzeZuDatei, type Skizze } from './modell/skizze';
+import { alleSkizzen, bitteUmDauerhaftenSpeicher, ladeSkizze, loescheSkizze, speichereSkizze } from './speicher/idb';
+import { vorschauSvg } from './zeichnen/vorschau';
 import { ladeJson, ladeToleranzen, speichereJson, speichereToleranzen } from './speicher/einstellungen';
 import { kommaZahl, zeichneRaeume } from './zeichnen/raeume';
 
@@ -33,6 +36,10 @@ let breite = 0;
 let hoehe = 0;
 let vp: Viewport = { scale: 100, ox: 40, oy: 400 };
 let raeume: Raum[] = [];
+let skizze: Skizze = neueSkizze();
+let speicherStatus = '';
+let speicherZeit: number | undefined;
+let speicherOffen = false;
 let auswahlId: number | null = null;
 let auswahlOeffnung: OeffnungsRef | null = null;
 let naechsteId = 1;
@@ -80,6 +87,7 @@ function merke(): void {
   verlauf.push(JSON.stringify(raeume));
   if (verlauf.length > MAX_SCHRITTE + 1) verlauf.shift();
   verlaufPos = verlauf.length - 1;
+  planeSpeichern();
 }
 
 function ladeVerlauf(): void {
@@ -88,6 +96,7 @@ function ladeVerlauf(): void {
   if (auswahlOeffnung && !raeume.find((r) => r.id === auswahlOeffnung!.raumId)?.oeffnungen?.some((o) => o.id === auswahlOeffnung!.id)) auswahlOeffnung = null;
   aktualisiere();
   plane();
+  planeSpeichern();
 }
 
 function passeGroesseAn(): void {
@@ -162,7 +171,7 @@ function aktualisiere(): void {
   const art: Record<string, string> = { pen: 'Stift', touch: 'Finger', mouse: 'Maus', '–': '–' };
   statusZeile.textContent =
     `Zeiger: ${pos}   |   Eingabe: ${art[zustand.letzteArt] ?? zustand.letzteArt}` +
-    `   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Berührungen: ${zustand.beruehrungen}   |   Vom Browser abgebrochen: ${zustand.abgebrochen}   |   Rad: ${zustand.radAnzahl} (${zustand.radLetzte})   |   Räume: ${raeume.length}`;
+    `   |   ${speicherStatus || 'Noch nichts zu speichern'}   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Berührungen: ${zustand.beruehrungen}   |   Vom Browser abgebrochen: ${zustand.abgebrochen}   |   Rad: ${zustand.radAnzahl} (${zustand.radLetzte})   |   Räume: ${raeume.length}`;
   btnZurueck.disabled = verlaufPos === 0;
   btnVor.disabled = verlaufPos >= verlauf.length - 1;
   btnLoeschen.disabled = raeume.length === 0;
@@ -708,6 +717,265 @@ btn('leisten-standard').addEventListener('click', () => {
   leisten.forEach((l) => l.zuruecksetzen());
 });
 
+// ---------------------------------------------------------------- Skizzen speichern und öffnen
+const skizzenName = document.getElementById('skizzen-name')!;
+const skDialog = document.getElementById('skizzen-dialog')!;
+const skName = document.getElementById('skizze-name') as HTMLInputElement;
+const skKunde = document.getElementById('skizze-kunde') as HTMLInputElement;
+const skAdresse = document.getElementById('skizze-adresse') as HTMLInputElement;
+const skNummer = document.getElementById('skizze-nummer') as HTMLInputElement;
+const skListe = document.getElementById('skizzen-liste')!;
+const skMeldung = document.getElementById('skizzen-meldung')!;
+const skDatei = document.getElementById('skizze-datei') as HTMLInputElement;
+const speicherInfo = document.getElementById('speicher-info')!;
+const uhrzeit = (): string => new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+function aktualisiereKopf(): void {
+  skizzenName.textContent = skizze.name;
+}
+
+/** Schreibt die Skizze ins Gerät. Fehler werden angezeigt, die App läuft weiter. */
+async function speichereJetzt(): Promise<void> {
+  window.clearTimeout(speicherZeit);
+  speicherOffen = false;
+  skizze.raeume = raeume;
+  skizze.naechsteId = naechsteId;
+  skizze.geaendert = Date.now();
+  try {
+    await speichereSkizze(skizze);
+    speichereJson('skizze.letzte', skizze.id); // beim nächsten Start diese Skizze wieder öffnen
+    speicherStatus = `Gespeichert ${uhrzeit()}`;
+  } catch {
+    speicherStatus = 'NICHT GESPEICHERT (Speicher des Geräts nicht verfügbar)';
+  }
+  aktualisiere();
+}
+
+/** Speichert kurz nach der letzten Änderung (nicht bei jedem Strich). */
+function planeSpeichern(): void {
+  speicherOffen = true;
+  speicherStatus = 'Speichert …';
+  window.clearTimeout(speicherZeit);
+  speicherZeit = window.setTimeout(() => void speichereJetzt(), 700);
+  aktualisiere();
+}
+
+function sofortSpeichernFallsOffen(): void {
+  if (speicherOffen) void speichereJetzt();
+}
+
+/** Vor dem Wechsel zu einer anderen Skizze: nur speichern, wenn es etwas Ungespeichertes gibt (keine leeren Skizzen anlegen). */
+async function speichereFallsOffen(): Promise<void> {
+  if (speicherOffen) await speichereJetzt();
+}
+window.addEventListener('pagehide', sofortSpeichernFallsOffen);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') sofortSpeichernFallsOffen();
+});
+
+function oeffneSkizze(s: Skizze): void {
+  skizze = s;
+  raeume = s.raeume;
+  naechsteId = s.naechsteId;
+  verlauf = [JSON.stringify(raeume)];
+  verlaufPos = 0;
+  auswahlId = null;
+  auswahlOeffnung = null;
+  vp = raeume.length > 0 ? passeAn(huelle(raeume), breite, hoehe) : startAnsicht(breite, hoehe);
+  speichereJson('skizze.letzte', s.id);
+  speicherStatus = '';
+  aktualisiereKopf();
+  aktualisiere();
+  plane();
+}
+
+function fuelleSkizzenFelder(): void {
+  skName.value = skizze.name;
+  skKunde.value = skizze.kunde.name;
+  skAdresse.value = skizze.kunde.adresse;
+  skNummer.value = skizze.kunde.nummer;
+}
+
+async function aktualisiereListe(): Promise<void> {
+  skListe.textContent = '';
+  let liste: Skizze[] = [];
+  try {
+    liste = await alleSkizzen();
+  } catch {
+    skMeldung.textContent = 'Der Speicher des Geräts ist nicht verfügbar. Sichere wichtige Skizzen als Datei.';
+    return;
+  }
+  if (liste.length === 0) {
+    const leer = document.createElement('p');
+    leer.className = 'hilfe';
+    leer.textContent = 'Noch keine gespeicherte Skizze. Sobald du etwas zeichnest, wird es automatisch gespeichert.';
+    skListe.append(leer);
+  }
+  for (const s of liste) {
+    const zeile = document.createElement('div');
+    zeile.className = 'skizzen-zeile';
+    const oeffnen = document.createElement('button');
+    oeffnen.type = 'button';
+    oeffnen.className = `oeffnen${s.id === skizze.id ? ' aktuell' : ''}`;
+    const text = document.createElement('span');
+    text.className = 'text';
+    const titel = document.createElement('strong');
+    titel.textContent = s.name;
+    const unter = document.createElement('span');
+    const flaecheGesamt = s.raeume.reduce((summe, r) => summe + flaeche(r.ecken), 0);
+    unter.textContent = `${s.kunde.name ? `${s.kunde.name}, ` : ''}${s.raeume.length} ${s.raeume.length === 1 ? 'Raum' : 'Räume'}, ${kommaZahl(flaecheGesamt, 1)} m², ${new Date(s.geaendert).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}`;
+    text.append(titel, unter);
+    oeffnen.append(vorschauSvg(s.raeume), text);
+    oeffnen.addEventListener('click', () => {
+      void (async () => {
+        if (s.id !== skizze.id) {
+          await speichereFallsOffen();
+          const frisch = await ladeSkizze(s.id);
+          if (frisch) oeffneSkizze(frisch);
+        }
+        skDialog.hidden = true;
+      })();
+    });
+    const weg = document.createElement('button');
+    weg.type = 'button';
+    weg.className = 'weg';
+    weg.textContent = 'Löschen';
+    let scharf: number | undefined;
+    weg.addEventListener('click', () => {
+      if (scharf === undefined) {
+        weg.classList.add('scharf');
+        weg.textContent = 'Sicher?';
+        scharf = window.setTimeout(() => {
+          scharf = undefined;
+          weg.classList.remove('scharf');
+          weg.textContent = 'Löschen';
+        }, 3000);
+        return;
+      }
+      window.clearTimeout(scharf);
+      void (async () => {
+        try {
+          await loescheSkizze(s.id);
+        } catch {
+          skMeldung.textContent = 'Löschen hat nicht geklappt.';
+          return;
+        }
+        if (s.id === skizze.id) {
+          window.clearTimeout(speicherZeit);
+          speicherOffen = false;
+          oeffneSkizze(neueSkizze());
+          fuelleSkizzenFelder();
+        }
+        skMeldung.textContent = `„${s.name}“ gelöscht.`;
+        await aktualisiereListe();
+      })();
+    });
+    zeile.append(oeffnen, weg);
+    skListe.append(zeile);
+  }
+}
+
+async function oeffneSkizzenDialog(): Promise<void> {
+  fuelleSkizzenFelder();
+  skMeldung.textContent = '';
+  skDialog.hidden = false;
+  void bitteUmDauerhaftenSpeicher().then((ok) => {
+    speicherInfo.textContent =
+      ok === true
+        ? 'Der Speicher des Geräts ist dauerhaft: Der Browser löscht die Skizzen nicht von selbst.'
+        : ok === false
+          ? 'Achtung: Der Browser darf die Skizzen löschen, wenn das Gerät Platz braucht. Installiere die App auf dem Home-Bildschirm und sichere wichtige Skizzen als Datei.'
+          : 'Ob der Browser die Skizzen dauerhaft behält, lässt sich hier nicht feststellen. Sichere wichtige Skizzen als Datei.';
+  });
+  await aktualisiereListe();
+}
+
+btn('btn-skizzen').addEventListener('click', () => void oeffneSkizzenDialog());
+btn('skizzen-zu').addEventListener('click', () => (skDialog.hidden = true));
+
+skName.addEventListener('input', () => {
+  skizze.name = skName.value.trim() || skizze.name;
+  aktualisiereKopf();
+  planeSpeichern();
+});
+skName.addEventListener('blur', () => {
+  if (!skName.value.trim()) skName.value = skizze.name;
+});
+for (const [feld, schluessel] of [[skKunde, 'name'], [skAdresse, 'adresse'], [skNummer, 'nummer']] as const) {
+  feld.addEventListener('input', () => {
+    skizze.kunde = { ...skizze.kunde, [schluessel]: feld.value };
+    planeSpeichern();
+  });
+}
+
+btn('skizze-neu').addEventListener('click', () => {
+  void (async () => {
+    await speichereFallsOffen();
+    oeffneSkizze(neueSkizze());
+    skDialog.hidden = true;
+    zeigeHinweis('Neue Skizze. Zeichne einen Raum.', false);
+  })();
+});
+
+btn('skizze-sichern').addEventListener('click', () => {
+  skizze.raeume = raeume;
+  skizze.naechsteId = naechsteId;
+  const text = skizzeZuDatei(skizze);
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `skizze-${skizze.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'skizze'}.json`;
+  a.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+  skMeldung.textContent = 'Die Datei wird heruntergeladen. Bewahre sie an einem sicheren Ort auf.';
+});
+
+btn('skizze-oeffnen').addEventListener('click', () => skDatei.click());
+skDatei.addEventListener('change', () => {
+  const datei = skDatei.files?.[0];
+  skDatei.value = '';
+  if (!datei) return;
+  void (async () => {
+    if (datei.size > 20 * 1024 * 1024) {
+      skMeldung.textContent = 'Die Datei ist zu groß für eine Skizze.';
+      return;
+    }
+    const ergebnis = leseSkizzenDatei(await datei.text());
+    if (typeof ergebnis === 'string') {
+      skMeldung.textContent = ergebnis;
+      return;
+    }
+    await speichereFallsOffen();
+    ergebnis.id = neueId(); // nie eine vorhandene Skizze überschreiben
+    ergebnis.geaendert = Date.now();
+    try {
+      await speichereSkizze(ergebnis);
+    } catch {
+      /* wird beim nächsten Speichern erneut versucht */
+    }
+    oeffneSkizze(ergebnis);
+    skDialog.hidden = true;
+    zeigeHinweis(`„${ergebnis.name}“ geöffnet.`, false);
+  })();
+});
+
+async function starte(): Promise<void> {
+  void bitteUmDauerhaftenSpeicher();
+  const letzte = ladeJson<string>('skizze.letzte');
+  if (!letzte) return;
+  try {
+    const gespeichert = await ladeSkizze(letzte);
+    // Nur öffnen, wenn in der Zwischenzeit noch nichts gezeichnet wurde
+    if (gespeichert && raeume.length === 0 && !speicherOffen) {
+      oeffneSkizze(gespeichert);
+      zeigeHinweis(`„${gespeichert.name}“ wieder geöffnet.`, false);
+    }
+  } catch {
+    speicherStatus = 'NICHT GESPEICHERT (Speicher des Geräts nicht verfügbar)';
+    aktualisiere();
+  }
+}
+
 // PDF: Kunde, Format und Maßstab wählen, dann erzeugen und anzeigen
 const pdfDialog = document.getElementById('pdf-dialog')!;
 const pdfFehler = document.getElementById('pdf-dialog-fehler')!;
@@ -722,10 +990,9 @@ const hinweis = document.getElementById('pdf-hinweis')!;
 let pdfUrl: string | null = null;
 
 btn('btn-pdf').addEventListener('click', () => {
-  const gespeichert = ladeJson<Partial<Kunde>>('skizze.kunde') ?? {};
-  kName.value = gespeichert.name ?? '';
-  kAdresse.value = gespeichert.adresse ?? '';
-  kNummer.value = gespeichert.nummer ?? '';
+  kName.value = skizze.kunde.name;
+  kAdresse.value = skizze.kunde.adresse;
+  kNummer.value = skizze.kunde.nummer;
   pdfFehler.hidden = true;
   pdfDialog.hidden = false;
 });
@@ -738,7 +1005,8 @@ btn('pdf-erzeugen').addEventListener('click', async () => {
     return;
   }
   const kunde: Kunde = { name: kName.value.trim(), adresse: kAdresse.value.trim(), nummer: kNummer.value.trim() };
-  speichereJson('skizze.kunde', kunde);
+  skizze.kunde = kunde;
+  planeSpeichern();
   const quer = pdfFormat.value === 'quer';
   const nenner = pdfMassstab.value === 'auto' ? 'auto' : Number(pdfMassstab.value);
   pdfDialog.hidden = true;
@@ -785,4 +1053,6 @@ if ('serviceWorker' in navigator && window.top === window.self && location.proto
 window.addEventListener('resize', passeGroesseAn);
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', plane);
 passeGroesseAn();
+aktualisiereKopf();
 aktualisiere();
+void starte();

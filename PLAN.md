@@ -11,7 +11,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 - [ ] 1d Wände und Zwischenwände (Kern fertig, Rest: Wanddicke in der Bemaßung)
 - [x] 1e Türen und Fenster (Kern fertig, Reste siehe Etappe)
 - [x] 1f Fertiges PDF und Offline-Betrieb (PWA) (Kern fertig; Prüfung durch den Nutzer: PDF ausdrucken und nachmessen, offline auf dem iPad)
-- [ ] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück
+- [x] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück (vom Nutzer auf dem Tablet zu testen)
 - [ ] 2b Versionen mit Vorschaubild
 - [ ] 3a Server im Docker-Container auf dem Mini-PC
 - [ ] 3b Hochladen mit Warteschlange, Weitergabe an n8n
@@ -226,12 +226,12 @@ Abhängigkeiten: 1e. Größe: mittel. Ort: Cloud.
 
 ### 2a Speichern auf dem Gerät, Kundendaten, Vor/Zurück
 Ziel: Skizzen bleiben auf dem Tablet erhalten.
-- [ ] Skizzen in IndexedDB, automatisches Speichern nach jeder Änderung
-- [ ] Startseite mit Skizzenliste: neu, öffnen, löschen (mit Rückfrage)
-- [ ] Kundendaten von Hand: Name, Adresse, Kundennummer
-- [ ] Vor/Zurück mit 100 Schritten
-- [ ] Quelldatei als JSON exportieren und importieren (Sicherung)
-- [ ] Speicher-Dauerhaftigkeit anfragen
+- [x] Skizzen in IndexedDB, automatisches Speichern nach jeder Änderung
+- [x] Skizzenliste (Knopf oben links mit dem Skizzennamen): neu, öffnen, löschen (zwei Tipps), mit Vorschaubild; die zuletzt bearbeitete Skizze öffnet beim Start wieder
+- [x] Kundendaten von Hand: Name, Adresse, Kundennummer
+- [x] Vor/Zurück mit 100 Schritten
+- [x] Quelldatei als JSON exportieren und importieren (Sicherung)
+- [x] Speicher-Dauerhaftigkeit anfragen
 Testen: Skizze anlegen, App schließen, Tablet neu starten, Skizze ist noch da. Vor/Zurück ausprobieren.
 Abhängigkeiten: 1f. Größe: mittel. Ort: Cloud.
 
@@ -350,7 +350,7 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
   - Beim Auflegen der Finger "pulsiert" etwas auf dem Tablet. Ursache suchen (vermutlich Neuzeichnen oder Statuszeile bei jeder Berührung, oder Hinweistext).
   - Stifteingabe am Tablet testen (Handballen-Filter, Zeichnen, Doppeltippen mit Stift).
 - **Stand nach 1f:** Räume, Wände, Zwischenwände, Türen, Fenster kommen ins PDF (Wände und Öffnungen als Umrisse, nicht gefüllt, damit sie sich gut in CAD einlesen lassen). Der Nutzer wählt Kunde, Format, Maßstab im Dialog PDF.
-- **Nächste Etappe:** 2a (Speichern auf dem Gerät, Skizzenliste, Kundendaten, Quelldatei sichern). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße auf dem Bildschirm (Raummaße, Öffnungsbreiten).
+- **Nächste Etappe:** 2b (Versionen mit Vorschaubild). Davor: Fehlerliste des Nutzers aus dem Praxistest (echter Raum, PDF ausdrucken und nachmessen, Stift). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße auf dem Bildschirm (Raummaße, Öffnungsbreiten).
 - Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
 - Zwei Finger auf dem Touchpad (Laptop) schicken Mausrad-Ereignisse. Früher wurde senkrechtes Wischen als Zoom gedeutet (Fehler, behoben): Jetzt verschiebt das Mausrad/Touchpad in alle Richtungen, Zoomen mit Spreizen, Strg + Rad oder Zoomknöpfen. Zwei Finger auf dem Touchscreen des Tablets: noch zu testen (Statuszeile zeigt "Vom Browser abgebrochen").
 - Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.

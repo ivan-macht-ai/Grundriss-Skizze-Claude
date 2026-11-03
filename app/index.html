@@ -14,7 +14,10 @@
 <body>
   <div id="app">
     <header class="kopf">
-      <strong class="titel">Skizze</strong>
+      <button id="btn-skizzen" type="button" class="titelknopf" aria-label="Meine Skizzen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14 M5 12h14 M5 19h14"/></svg>
+        <span id="skizzen-name">Skizze</span>
+      </button>
       <span class="platz"></span>
       <button id="btn-einstellungen" type="button" aria-label="Einstellungen">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 4v6 M9 14v6"/></svg>
@@ -105,6 +108,34 @@
             <button id="raum-uebernehmen" type="button" class="haupt">Übernehmen</button>
             <button id="raum-loeschen" type="button" class="gefahr-knopf">Raum löschen</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="skizzen-dialog" class="dialog" hidden>
+      <div class="dialog-tafel breit" role="dialog" aria-modal="true" aria-labelledby="skizzen-titel">
+        <div class="dialog-kopf">
+          <strong id="skizzen-titel">Meine Skizzen</strong>
+          <button id="skizzen-zu" type="button">Fertig</button>
+        </div>
+        <div class="dialog-inhalt">
+          <h3 class="abschnitt">Diese Skizze</h3>
+          <div class="feld"><label for="skizze-name">Name der Skizze</label><input id="skizze-name" type="text" autocomplete="off" maxlength="120" /></div>
+          <div class="feld"><label for="skizze-kunde">Kundenname</label><input id="skizze-kunde" type="text" autocomplete="off" maxlength="120" /></div>
+          <div class="feld"><label for="skizze-adresse">Adresse</label><input id="skizze-adresse" type="text" autocomplete="off" maxlength="200" /></div>
+          <div class="feld"><label for="skizze-nummer">Kundennummer</label><input id="skizze-nummer" type="text" autocomplete="off" maxlength="80" /></div>
+          <div class="dialog-knoepfe">
+            <button id="skizze-sichern" type="button">Als Datei sichern</button>
+          </div>
+          <h3 class="abschnitt">Alle Skizzen auf diesem Gerät</h3>
+          <div class="dialog-knoepfe">
+            <button id="skizze-neu" type="button" class="haupt">Neue Skizze</button>
+            <button id="skizze-oeffnen" type="button">Datei öffnen</button>
+            <input id="skizze-datei" type="file" accept=".json,application/json" hidden />
+          </div>
+          <p id="skizzen-meldung" class="hilfe" role="status"></p>
+          <div id="skizzen-liste"></div>
+          <p id="speicher-info" class="hilfe"></p>
         </div>
       </div>
     </div>
