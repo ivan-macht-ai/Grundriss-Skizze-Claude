@@ -406,3 +406,31 @@ button:focus-visible {
   gap: 8px;
   padding-top: 14px;
 }
+
+/* Leisten, die oben oder unten an der Kante sitzen, liegen waagerecht */
+.schiene.waagerecht {
+  flex-direction: row;
+  align-items: center;
+  max-width: calc(100% - 20px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-height: none;
+  touch-action: pan-x;
+}
+.schiene.waagerecht hr {
+  width: 0;
+  height: 40px;
+  margin: 0 3px;
+  border-top: 0;
+  border-left: 1px solid var(--linie);
+}
+.schiene.waagerecht .griff {
+  align-self: stretch;
+  min-width: 24px;
+  min-height: 0;
+  margin: 0 2px 0 -2px;
+}
+.schiene.waagerecht .griff svg {
+  width: 22px;
+  height: 26px;
+}

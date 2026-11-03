@@ -3,7 +3,7 @@ import { STANDARD_TOLERANZEN } from '../src/config/toleranzen';
 import { erkenneRaum } from '../src/erkennung/erkenne';
 import { flaeche, istEinfach } from '../src/geometrie/polygon';
 import { umgrenzung } from '../src/geometrie/vec';
-import { gekritzel, kreis, lForm, mitSchraege, rechteck, strichUmVieleck, uForm } from './hilfen';
+import { ellipse, gekritzel, kreis, lForm, mitSchraege, rechteck, strichUmVieleck, uForm } from './hilfen';
 
 const T = STANDARD_TOLERANZEN;
 
@@ -115,5 +115,48 @@ describe('Toleranzen wirken', () => {
     const strich = strichUmVieleck(rechteck(4, 3), { drehung: 18, rauschen: 0.02 });
     expect(erkenneRaum(strich, { ...T, winkel: 10 }).ok).toBe(false);
     expect(erkenneRaum(strich, { ...T, winkel: 21 }).ok).toBe(true);
+  });
+});
+
+describe('Nachbesserungen aus der Prüfung', () => {
+  it('lange schmale Flure werden erkannt', () => {
+    for (const [b, h] of [[8, 1.2], [10, 1.5], [12, 2], [12, 1.5]] as const) {
+      for (let seed = 1; seed <= 6; seed++) {
+        const e = erkenneRaum(strichUmVieleck(rechteck(b, h), { rauschen: 0.04, seed, start: seed / 7 }), T);
+        if (!e.ok) throw new Error(`${b}x${h} seed ${seed}: ${e.grund}`);
+        expect(e.ecken.length).toBe(4);
+      }
+    }
+  });
+
+  it('kleine echte Nische (1 x 1 m in 8 x 6 m) bleibt erhalten', () => {
+    const mitNische = [
+      { x: 0, y: 0 }, { x: 8, y: 0 }, { x: 8, y: 6 }, { x: 4.5, y: 6 }, { x: 4.5, y: 5 }, { x: 3.5, y: 5 }, { x: 3.5, y: 6 }, { x: 0, y: 6 },
+    ];
+    const e = erkenneRaum(strichUmVieleck(mitNische, { rauschen: 0.03, seed: 2 }), T);
+    if (!e.ok) throw new Error(e.grund);
+    expect(e.ecken.length).toBe(8);
+  });
+
+  it('Strich, der über den Anfang hinausläuft (15 %), wird gekappt und erkannt', () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      erwarteRaum(strichUmVieleck(rechteck(4, 3), { ueberlapp: 0.15, rauschen: 0.03, seed, start: seed / 8 }), 4, 12, 0.1);
+    }
+  });
+
+  it('Ellipse mit normalem Seitenverhältnis wird abgelehnt', () => {
+    expect(erkenneRaum(ellipse(2, 1.5), T).ok).toBe(false);
+  });
+
+  it('bekannte Grenze: eine sehr flache Ellipse (4 x 1,2 m) gilt als Sechseck mit Schrägen', () => {
+    const e = erkenneRaum(ellipse(2, 0.6), T);
+    expect(e.ok).toBe(true);
+  });
+
+  it('ungültige Punkte (NaN, Unendlich) bringen nichts zum Absturz', () => {
+    const strich = strichUmVieleck(rechteck(4, 3), { rauschen: 0.03, seed: 1 });
+    strich.splice(10, 0, { x: NaN, y: 1 }, { x: Infinity, y: 2 });
+    const e = erkenneRaum(strich, T);
+    expect(e.ok).toBe(true);
   });
 });

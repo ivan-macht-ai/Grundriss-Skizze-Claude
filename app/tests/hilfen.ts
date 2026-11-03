@@ -145,3 +145,9 @@ export function gekritzel(seed: number): P[] {
   }
   return aus;
 }
+
+export function ellipse(a: number, b: number, n = 160): P[] {
+  const aus: P[] = [];
+  for (let i = 0; i <= n; i++) aus.push({ x: a * Math.cos((i / n) * 2 * Math.PI), y: b * Math.sin((i / n) * 2 * Math.PI) });
+  return aus;
+}

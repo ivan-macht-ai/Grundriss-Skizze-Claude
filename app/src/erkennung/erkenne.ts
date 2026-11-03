@@ -5,6 +5,9 @@ import type { Toleranzen } from '../config/toleranzen';
 import { flaeche, flaecheMitVorzeichen, istEinfach } from '../geometrie/polygon';
 import { abstandPunktStrecke, dist, pfadLaenge, umgrenzung, type P } from '../geometrie/vec';
 
+/** Größte erlaubte Krümmung einer Seite: Streuung der Strichpunkte um ihre Ausgleichsgerade als Anteil der Seitenlänge. */
+const GERADHEIT_ANTEIL = 0.06;
+
 export type Ergebnis = { ok: true; ecken: P[]; form: string } | { ok: false; grund: string };
 
 const fehler = (grund: string): Ergebnis => ({ ok: false, grund });
@@ -172,6 +175,16 @@ function mittenPunkte(ecken: P[], pts: P[]): P[][] {
   return listen;
 }
 
+/** Streuung (Standardabweichung) der Punkte quer zu ihrer Ausgleichsgeraden, in Metern. */
+function streuungQuer(punkte: P[], gradWinkel: number): number {
+  const r = (gradWinkel * Math.PI) / 180;
+  const nx = -Math.sin(r);
+  const ny = Math.cos(r);
+  const werte = punkte.map((p) => nx * p.x + ny * p.y);
+  const m = werte.reduce((a, b) => a + b, 0) / werte.length;
+  return Math.sqrt(werte.reduce((a, b) => a + (b - m) ** 2, 0) / werte.length);
+}
+
 /** Richtung (Grad, 0..180) einer Punktwolke durch Ausgleichsgerade. */
 function ausgleichsWinkel(punkte: P[]): number {
   const n = punkte.length;
@@ -196,7 +209,7 @@ const normale = (r: number) => {
 };
 
 /** Kanten auf 0°/45°/90°/135° einrasten und gleiche Nachbarrichtungen zusammenlegen. */
-function kantenEinrasten(ecken: P[], pts: P[], winkelToleranz: number): Linie[] | string {
+export function kantenEinrasten(ecken: P[], pts: P[], winkelToleranz: number): Linie[] | string {
   const n = ecken.length;
   const mitte = mittenPunkte(ecken, pts);
   let linien: Linie[] = [];
@@ -208,6 +221,9 @@ function kantenEinrasten(ecken: P[], pts: P[], winkelToleranz: number): Linie[] 
     const punkte = mitte[i];
     let grad =
       punkte.length >= 4 ? ausgleichsWinkel(punkte) : (((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI) % 180 + 180) % 180;
+    if (punkte.length >= 6 && streuungQuer(punkte, grad) > GERADHEIT_ANTEIL * l) {
+      return 'Das sieht nicht nach geraden Wänden aus. Zeichne die Ecken deutlicher.';
+    }
     // Ausgleichswinkel nahe 180° zählt wie 0°
     if (grad > 157.5) grad -= 180;
     const k = Math.round(grad / 45);
@@ -258,6 +274,24 @@ function schnittpunkt(a: Linie, b: Linie): P | null {
   return { x: (a.c * nb.y - b.c * na.y) / det, y: (na.x * b.c - nb.x * a.c) / det };
 }
 
+/** Läuft der Strich über seinen Anfang hinaus, wird er am Punkt gekappt, der dem Anfang am nächsten liegt (nur im letzten Viertel). */
+export function ueberschussKappen(pts: P[]): P[] {
+  const gesamt = pfadLaenge(pts);
+  let gelaufen = 0;
+  let bestIdx = pts.length - 1;
+  let bestD = dist(pts[0], pts[pts.length - 1]);
+  for (let i = 1; i < pts.length; i++) {
+    gelaufen += dist(pts[i - 1], pts[i]);
+    if (gelaufen < 0.75 * gesamt) continue;
+    const d = dist(pts[0], pts[i]);
+    if (d < bestD) {
+      bestD = d;
+      bestIdx = i;
+    }
+  }
+  return pts.slice(0, bestIdx + 1);
+}
+
 export function formName(ecken: P[]): string {
   const n = ecken.length;
   let nurAchsenparallel = true;
@@ -273,11 +307,14 @@ export function formName(ecken: P[]): string {
   return 'Winkelform';
 }
 
-export function erkenneRaum(roh: P[], t: Toleranzen): Ergebnis {
+export function erkenneRaum(eingabe: P[], t: Toleranzen): Ergebnis {
+  const roh = eingabe.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
   const l0 = pfadLaenge(roh);
   if (roh.length < 8 || l0 < 4 * t.minKante) return fehler('Der Strich ist zu kurz.');
 
-  const pts = glaette(abtasten(roh, Math.max(0.02, l0 / 150)));
+  // Feste Abstände in Metern (nicht abhängig von der Größe), damit auch kleine Nischen und scharfe Ecken erhalten bleiben.
+  const schritt = Math.min(0.05, Math.max(0.02, l0 / 400));
+  const pts = ueberschussKappen(glaette(abtasten(roh, schritt), Math.max(1, Math.round(0.1 / schritt))));
   const laenge = pfadLaenge(pts);
   const luecke = dist(pts[0], pts[pts.length - 1]);
   if (luecke > Math.max(0.25, t.schliessen * laenge)) return fehler('Die Form ist nicht geschlossen. Zieh den Strich bis zum Anfang.');
@@ -286,8 +323,8 @@ export function erkenneRaum(roh: P[], t: Toleranzen): Ergebnis {
   const diag = Math.hypot(box.maxX - box.minX, box.maxY - box.minY);
   const ring = [...pts, pts[0]];
   // Sehr kurze Seiten (kleine Rundungen an Ecken) verschwinden; die Grenze wächst mit der Größe der Zeichnung.
-  const kurz = Math.max(t.minKante, t.rundung * laenge);
-  const roheEcken = schwacheEckenEntfernen(eckenImRing(ring, Math.max(0.04, t.ecken * diag)));
+  const kurz = Math.max(t.minKante, Math.min(t.rundung * laenge, 0.5));
+  const roheEcken = schwacheEckenEntfernen(eckenImRing(ring, Math.min(Math.max(0.04, t.ecken * diag), 0.3)));
   const ecken = schwacheEckenEntfernen(kurzeKantenVerschmelzen(roheEcken, kurz));
   if (ecken.length < 3) return fehler('Keine Ecken gefunden.');
 

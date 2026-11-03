@@ -6,7 +6,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 ## Fortschritt
 
 - [x] 1a Gerüst, Zeichenfläche, Muster-PDF (Stift und Handballen auf dem Tablet noch zu testen)
-- [x] 1b Formenerkennung (Opus-Prüfung läuft, Stand siehe unten)
+- [x] 1b Formenerkennung (von Opus geprüft, Befunde eingearbeitet)
 - [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung
 - [ ] 1d Wände und Zwischenwände
 - [ ] 1e Türen und Fenster
@@ -183,6 +183,8 @@ Abhängigkeiten: 1a. Größe: mittel bis groß. Falls die Sitzung nicht reicht: 
 
 ### 1c Räume bearbeiten, Maße eintippen, Bemaßung
 Ziel: Räume bekommen exakte Maße und eine Bemaßung wie in der Bauzeichnung.
+- [ ] Werkzeug "Auswählen": Raum antippen, markieren; Raum benennen (zum Beispiel Keller, Technikraum)
+- [ ] Maße außen: Bemaßung außerhalb des Raums (Wunsch des Nutzers); Innenmaße bleiben wählbar
 - [ ] Raum antippen, Kante wählen, Länge eintippen; Ausgleichskante hält die Form geschlossen
 - [ ] Raum verschieben, drehen in 90°-Schritten, löschen, benennen
 - [ ] Mehrere Räume; Räume rasten aneinander an
@@ -338,5 +340,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 
 ## 8. Notizen für später
 
+- Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
+- Zwei-Finger-Verschieben nach oben/unten ging in der Vorschau auf dem Tablet des Nutzers nicht, im Test-Browser schon. Verdacht: Gesten der umgebenden Seite. Prüfen, sobald die App installiert läuft (Etappe 1f). Bis dahin hilft das Werkzeug "Verschieben".
+- Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.
 - Freie Winkel (optional).
 - Weitere Symbole nach Bedarf.
