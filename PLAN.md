@@ -9,7 +9,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 - [x] 1b Formenerkennung (von Opus geprüft, Befunde eingearbeitet)
 - [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung (Kern fertig, Reste siehe Etappe)
 - [ ] 1d Wände und Zwischenwände (Kern fertig, Rest: Wanddicke in der Bemaßung)
-- [ ] 1e Türen und Fenster
+- [x] 1e Türen und Fenster (Kern fertig, Reste siehe Etappe)
 - [ ] 1f Fertiges PDF und Offline-Betrieb (PWA)
 - [ ] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück
 - [ ] 2b Versionen mit Vorschaubild
@@ -206,11 +206,11 @@ Abhängigkeiten: 1c. Größe: mittel. Ort: Cloud.
 
 ### 1e Türen und Fenster
 Ziel: Türen und Fenster in Bauzeichnungs-Darstellung.
-- [ ] Tür: Wandöffnung, Türblatt, Aufschlagbogen; Breite, Anschlag links/rechts, Aufschlag innen/außen
-- [ ] Fenster: Wandöffnung mit Fensterlinien; Breite
-- [ ] Setzen durch Antippen einer Kante, verschieben entlang der Kante, Abstand zur Ecke eintippen
-- [ ] Ohne Wand (Dicke 0) wird eine schmale Ersatzdarstellung gezeigt
-- [ ] Bemaßung von Breite und Abstand
+- [x] Tür: Wandöffnung, Türblatt, Aufschlagbogen; Breite, Anschlag links/rechts, Aufschlag innen/außen
+- [x] Fenster: Wandöffnung mit Fensterlinien; Breite
+- [x] Setzen durch Antippen einer Wand (Werkzeuge Tür/Fenster), Ziehen entlang der Wand im Werkzeug Auswählen (5-cm-Raster), Doppeltippen öffnet Breite, Abstand zur Ecke, Anschlag, Aufschlag
+- [x] Ohne Wand (Dicke 0) wird eine schmale Ersatzdarstellung gezeigt
+- [ ] Bemaßung von Breite und Abstand (Breite steht außen an der Öffnung und kollidiert teils mit Maßlinien; Abstand nur im Dialog)
 Testen: Türen in beide Richtungen setzen, Fenster setzen, Maße prüfen.
 Abhängigkeiten: 1d. Größe: mittel. Ort: Cloud.
 
@@ -349,7 +349,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
   - Maßlinien überschneiden sich noch: an Nachbarseiten entfallen sie, aber zwischen mehreren Räumen und an Ecken kann es weiter kollidieren. Lösung überlegen (zum Beispiel Maßlinien nur außen am Gesamtumriss, Umschalter innen/außen, Abstand staffeln).
   - Beim Auflegen der Finger "pulsiert" etwas auf dem Tablet. Ursache suchen (vermutlich Neuzeichnen oder Statuszeile bei jeder Berührung, oder Hinweistext).
   - Stifteingabe am Tablet testen (Handballen-Filter, Zeichnen, Doppeltippen mit Stift).
-- **Nächste Etappe:** 1e Türen und Fenster. Davor kurz die drei offenen Punkte oben klären.
+- **Nächste Etappe:** 1f (fertiges PDF mit allem, was gezeichnet wurde, und Offline-Betrieb prüfen). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße (Raummaße, Öffnungsbreiten).
+- Türen und Fenster sind in der Vorschau gebaut (1e), kommen aber noch nicht ins PDF (1f).
 - Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
 - Zwei Finger auf dem Touchpad (Laptop) schicken Mausrad-Ereignisse. Früher wurde senkrechtes Wischen als Zoom gedeutet (Fehler, behoben): Jetzt verschiebt das Mausrad/Touchpad in alle Richtungen, Zoomen mit Spreizen, Strg + Rad oder Zoomknöpfen. Zwei Finger auf dem Touchscreen des Tablets: noch zu testen (Statuszeile zeigt "Vom Browser abgebrochen").
 - Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.

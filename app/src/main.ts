@@ -1,5 +1,5 @@
 import './styles.css';
-import { verbindeEingabe, type EingabeZustand, type Strich, type Werkzeug } from './ansicht/eingabe';
+import { verbindeEingabe, type EingabeZustand, type OeffnungsRef, type Strich, type Werkzeug } from './ansicht/eingabe';
 import { zeichneRaster, type RasterFarben } from './ansicht/raster';
 import { startAnsicht, toScreen, zoomAt, type Viewport } from './ansicht/viewport';
 import { STANDARD_TOLERANZEN, TOLERANZ_BESCHREIBUNG, type Toleranzen } from './config/toleranzen';
@@ -9,7 +9,9 @@ import { dist } from './geometrie/vec';
 import { ausrichten, punktImVieleck, seitenName, setzeKantenlaenge, verschiebeRaum } from './modell/bearbeiten';
 import { dickenVon, findeZwischenwand, leseDicke, nachbarSeiten, type Zwischenwand } from './modell/waende';
 import type { Raum } from './modell/typen';
-import { leseLaenge, zeigeLaenge } from './modell/zahlen';
+import { findeKante, findeOeffnung, kante as seitenKante, neueOeffnung, passeOeffnungenAn, pruefeOeffnung, verschiebeOeffnung } from './modell/oeffnungen';
+import type { Oeffnung } from './modell/typen';
+import { leseBreite, leseLaenge, zeigeLaenge } from './modell/zahlen';
 import { macheVerschiebbar } from './oberflaeche/verschiebbar';
 import { erzeugeMusterPdf } from './pdf/musterPdf';
 import { ladeToleranzen, speichereToleranzen } from './speicher/einstellungen';
@@ -32,6 +34,7 @@ let hoehe = 0;
 let vp: Viewport = { scale: 100, ox: 40, oy: 400 };
 let raeume: Raum[] = [];
 let auswahlId: number | null = null;
+let auswahlOeffnung: OeffnungsRef | null = null;
 let naechsteId = 1;
 let toleranzen: Toleranzen = ladeToleranzen();
 let zeigerWelt: { x: number; y: number } | null = null;
@@ -82,6 +85,7 @@ function merke(): void {
 function ladeVerlauf(): void {
   raeume = JSON.parse(verlauf[verlaufPos]) as Raum[];
   if (auswahlId !== null && !raeume.some((r) => r.id === auswahlId)) auswahlId = null;
+  if (auswahlOeffnung && !raeume.find((r) => r.id === auswahlOeffnung!.raumId)?.oeffnungen?.some((o) => o.id === auswahlOeffnung!.id)) auswahlOeffnung = null;
   aktualisiere();
   plane();
 }
@@ -129,8 +133,10 @@ function zeichne(): void {
       leise: farbe('--text-leise'),
       auswahl: farbe('--akzent'),
       wand: farbe('--wand'),
+      flaeche: farbe('--flaeche'),
     },
     auswahlId,
+    auswahlOeffnung,
   );
 
   const laufend = eingabe.aktuellerStrich();
@@ -160,10 +166,11 @@ function aktualisiere(): void {
   btnZurueck.disabled = verlaufPos === 0;
   btnVor.disabled = verlaufPos >= verlauf.length - 1;
   btnLoeschen.disabled = raeume.length === 0;
-  loeschenText.textContent = auswahlId !== null ? 'Raum löschen' : loeschenScharf !== undefined ? 'Sicher?' : 'Alles löschen';
+  loeschenText.textContent =
+    auswahlOeffnung !== null ? 'Öffnung löschen' : auswahlId !== null ? 'Raum löschen' : loeschenScharf !== undefined ? 'Sicher?' : 'Alles löschen';
   for (const k of werkzeugKnoepfe) k.setAttribute('aria-pressed', String(k.dataset.werkzeug === zustand.werkzeug));
   canvas.classList.toggle('zeiger', zustand.werkzeug === 'auswaehlen');
-  if (raeume.length === 0 || auswahlId !== null) entschaerfeLoeschen(false);
+  if (raeume.length === 0 || auswahlId !== null || auswahlOeffnung !== null) entschaerfeLoeschen(false);
 }
 
 function entschaerfeLoeschen(neuZeichnen = true): void {
@@ -198,7 +205,8 @@ function strichFertig(s: Strich): void {
   pruefeZwischenwand(raum.id);
 }
 
-// Raum ziehen
+// Raum und Öffnung ziehen
+let oeffnungZiehen: { ref: OeffnungsRef; abstandAlt: number; griffVersatz: number } | null = null;
 let ziehOriginal: { id: number; ecken: Raum['ecken'] } | null = null;
 
 const eingabe = verbindeEingabe(
@@ -222,6 +230,69 @@ const eingabe = verbindeEingabe(
     },
     waehleRaum: (id) => {
       auswahlId = id;
+      auswahlOeffnung = null;
+      aktualisiere();
+      plane();
+    },
+    findeOeffnung: (x, y) => {
+      const t = findeOeffnung(raeume, x, y, Math.max(0.12, 16 / vp.scale));
+      return t ? { raumId: t.raum.id, id: t.oeffnung.id } : null;
+    },
+    waehleOeffnung: (ref) => {
+      auswahlOeffnung = ref;
+      auswahlId = null;
+      aktualisiere();
+      plane();
+    },
+    startOeffnungsBewegung: (ref, x, y) => {
+      const raum = raeume.find((r) => r.id === ref.raumId);
+      const o = raum?.oeffnungen?.find((q) => q.id === ref.id);
+      if (!raum || !o) return;
+      const k = seitenKante(raum, o.kante);
+      const t = (x - k.a.x) * k.dx + (y - k.a.y) * k.dy;
+      oeffnungZiehen = { ref, abstandAlt: o.abstand, griffVersatz: t - (o.abstand + o.breite / 2) };
+    },
+    oeffnungsBewegung: (x, y) => {
+      if (!oeffnungZiehen) return;
+      const raum = raeume.find((r) => r.id === oeffnungZiehen!.ref.raumId);
+      const o = raum?.oeffnungen?.find((q) => q.id === oeffnungZiehen!.ref.id);
+      if (!raum || !o) return;
+      const k = seitenKante(raum, o.kante);
+      const t = (x - k.a.x) * k.dx + (y - k.a.y) * k.dy;
+      o.abstand = verschiebeOeffnung(raum, o, t, oeffnungZiehen.griffVersatz);
+      plane();
+    },
+    endeOeffnungsBewegung: (bewegt) => {
+      if (bewegt && oeffnungZiehen) merke();
+      oeffnungZiehen = null;
+      aktualisiere();
+    },
+    abbruchOeffnungsBewegung: () => {
+      if (oeffnungZiehen) {
+        const raum = raeume.find((r) => r.id === oeffnungZiehen!.ref.raumId);
+        const o = raum?.oeffnungen?.find((q) => q.id === oeffnungZiehen!.ref.id);
+        if (o) o.abstand = oeffnungZiehen.abstandAlt;
+      }
+      oeffnungZiehen = null;
+      plane();
+    },
+    doppeltippeOeffnung: (ref) => oeffneOeffnungDialog(ref),
+    platziere: (art, x, y) => {
+      const treffer = findeKante(raeume, x, y, Math.max(0.15, 28 / vp.scale));
+      if (!treffer) {
+        zeigeHinweis('Tippe genau auf eine Wand, also auf die Seite eines Raums.', true);
+        return;
+      }
+      const ergebnis = neueOeffnung(treffer.raum, treffer.kante, treffer.t, art);
+      if (typeof ergebnis === 'string') {
+        zeigeHinweis(ergebnis, true);
+        return;
+      }
+      treffer.raum.oeffnungen = [...(treffer.raum.oeffnungen ?? []), ergebnis];
+      auswahlOeffnung = { raumId: treffer.raum.id, id: ergebnis.id };
+      auswahlId = null;
+      merke();
+      zeigeHinweis(`${art === 'tuer' ? 'Tür' : 'Fenster'} eingefügt. Zum Ändern: Werkzeug Auswählen, doppelt tippen.`, false);
       aktualisiere();
       plane();
     },
@@ -261,8 +332,10 @@ const eingabe = verbindeEingabe(
 for (const k of werkzeugKnoepfe) {
   k.addEventListener('click', () => {
     zustand.werkzeug = k.dataset.werkzeug as Werkzeug;
-    if (zustand.werkzeug === 'zeichnen') auswahlId = null;
-    else if (raeume.length > 0) zeigeHinweis('Raum antippen und ziehen. Zweimal tippen: benennen und Maße ändern.', false);
+    auswahlId = null;
+    auswahlOeffnung = null;
+    if (zustand.werkzeug === 'auswaehlen' && raeume.length > 0) zeigeHinweis('Raum oder Tür antippen und ziehen. Zweimal tippen: ändern.', false);
+    else if (zustand.werkzeug === 'tuer' || zustand.werkzeug === 'fenster') zeigeHinweis('Tippe auf eine Wand, um eine Öffnung einzufügen.', false);
     aktualisiere();
     plane();
   });
@@ -277,6 +350,18 @@ btnVor.addEventListener('click', () => {
 });
 // Gewählter Raum: ein Tipp löscht ihn (mit Zurück rückgängig). Ohne Auswahl: alles löschen, mit zwei Tipps.
 btnLoeschen.addEventListener('click', () => {
+  if (auswahlOeffnung !== null) {
+    const raum = raeume.find((r) => r.id === auswahlOeffnung!.raumId);
+    if (raum) {
+      raum.oeffnungen = (raum.oeffnungen ?? []).filter((o) => o.id !== auswahlOeffnung!.id);
+      if (raum.oeffnungen.length === 0) delete raum.oeffnungen;
+    }
+    auswahlOeffnung = null;
+    merke();
+    aktualisiere();
+    plane();
+    return;
+  }
   if (auswahlId !== null) {
     raeume = raeume.filter((r) => r.id !== auswahlId);
     auswahlId = null;
@@ -426,6 +511,7 @@ btn('raum-uebernehmen').addEventListener('click', () => {
     raum.ecken = ecken;
     raum.name = name;
     raum.waende = waende;
+    passeOeffnungenAn(raum);
     merke();
   }
   schliesseRaumDialog();
@@ -439,6 +525,81 @@ btn('raum-loeschen').addEventListener('click', () => {
 raumName.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') btn('raum-uebernehmen').click();
 });
+
+// Tür oder Fenster bearbeiten
+const oeffnungDialog = document.getElementById('oeffnung-dialog')!;
+const oBreite = document.getElementById('oeffnung-breite') as HTMLInputElement;
+const oAbstand = document.getElementById('oeffnung-abstand') as HTMLInputElement;
+const oAnschlag = document.getElementById('oeffnung-anschlag') as HTMLSelectElement;
+const oAufschlag = document.getElementById('oeffnung-aufschlag') as HTMLSelectElement;
+const oFehler = document.getElementById('oeffnung-fehler')!;
+let bearbeiteOeffnung: OeffnungsRef | null = null;
+
+function oeffneOeffnungDialog(ref: OeffnungsRef): void {
+  const raum = raeume.find((r) => r.id === ref.raumId);
+  const o = raum?.oeffnungen?.find((q) => q.id === ref.id);
+  if (!raum || !o) return;
+  bearbeiteOeffnung = ref;
+  auswahlOeffnung = ref;
+  const tuer = o.art === 'tuer';
+  document.getElementById('oeffnung-titel')!.textContent = tuer ? 'Tür bearbeiten' : 'Fenster bearbeiten';
+  document.getElementById('oeffnung-ort')!.textContent = `${raum.name}, Seite ${o.kante + 1}, ${seitenName(raum.ecken, o.kante, schwerpunkt(raum.ecken))}. Maße in Metern oder Zentimetern, zum Beispiel 88,5 oder 1,01 m.`;
+  oBreite.value = `${zeigeLaenge(o.breite)} m`;
+  oAbstand.value = `${zeigeLaenge(o.abstand)} m`;
+  oAnschlag.value = o.anschlag;
+  oAufschlag.value = o.aufschlag;
+  document.getElementById('zeile-anschlag')!.hidden = !tuer;
+  document.getElementById('zeile-aufschlag')!.hidden = !tuer;
+  oFehler.hidden = true;
+  oeffnungDialog.hidden = false;
+  plane();
+  window.setTimeout(() => oBreite.select(), 50);
+}
+
+function schliesseOeffnungDialog(): void {
+  oeffnungDialog.hidden = true;
+  bearbeiteOeffnung = null;
+  aktualisiere();
+  plane();
+}
+
+btn('oeffnung-abbrechen').addEventListener('click', schliesseOeffnungDialog);
+btn('oeffnung-uebernehmen').addEventListener('click', () => {
+  const raum = raeume.find((r) => r.id === bearbeiteOeffnung?.raumId);
+  const o = raum?.oeffnungen?.find((q) => q.id === bearbeiteOeffnung?.id);
+  if (!raum || !o) return schliesseOeffnungDialog();
+  const fehler = (text: string) => {
+    oFehler.textContent = text;
+    oFehler.hidden = false;
+  };
+  const breite = leseBreite(oBreite.value);
+  if (breite === null) return fehler(`„${oBreite.value}“ ist keine Breite. Schreibe zum Beispiel 88,5.`);
+  const abstand = leseLaenge(oAbstand.value);
+  if (abstand === null) return fehler(`„${oAbstand.value}“ ist kein Abstand. Schreibe zum Beispiel 0,50.`);
+  const neu: Oeffnung = { ...o, breite, abstand, anschlag: oAnschlag.value as Oeffnung['anschlag'], aufschlag: oAufschlag.value as Oeffnung['aufschlag'] };
+  const meldung = pruefeOeffnung(raum, neu);
+  if (meldung) return fehler(meldung);
+  if (JSON.stringify(neu) !== JSON.stringify(o)) {
+    raum.oeffnungen = (raum.oeffnungen ?? []).map((q) => (q.id === o.id ? neu : q));
+    merke();
+  }
+  schliesseOeffnungDialog();
+});
+btn('oeffnung-loeschen').addEventListener('click', () => {
+  const raum = raeume.find((r) => r.id === bearbeiteOeffnung?.raumId);
+  if (raum) {
+    raum.oeffnungen = (raum.oeffnungen ?? []).filter((q) => q.id !== bearbeiteOeffnung?.id);
+    if (raum.oeffnungen.length === 0) delete raum.oeffnungen;
+  }
+  auswahlOeffnung = null;
+  merke();
+  schliesseOeffnungDialog();
+});
+[oBreite, oAbstand].forEach((f) =>
+  f.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btn('oeffnung-uebernehmen').click();
+  }),
+);
 
 // Zwischenwand: Räume liegen nah beieinander, die App fragt nach der Dicke der Wand dazwischen
 const wandDialog = document.getElementById('wand-dialog')!;

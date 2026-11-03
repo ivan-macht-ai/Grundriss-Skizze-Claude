@@ -2,6 +2,7 @@ import { flaeche, schwerpunkt } from '../geometrie/polygon';
 import { dist } from '../geometrie/vec';
 import type { Raum } from '../modell/typen';
 import { dickenVon, nachbarSeiten, waendeUmriss } from '../modell/waende';
+import { zeichneOeffnungen } from './oeffnungen';
 import { toScreen, type Viewport } from '../ansicht/viewport';
 
 export interface RaumFarben {
@@ -11,6 +12,7 @@ export interface RaumFarben {
   leise: string;
   auswahl: string;
   wand: string;
+  flaeche: string;
 }
 
 export const kommaZahl = (wert: number, stellen = 2): string => wert.toFixed(stellen).replace('.', ',');
@@ -21,6 +23,7 @@ export function zeichneRaeume(
   raeume: Raum[],
   farben: RaumFarben,
   auswahlId: number | null,
+  auswahlOeffnung: { raumId: number; id: number } | null = null,
 ): void {
   for (const raum of raeume) {
     const gewaehlt = raum.id === auswahlId;
@@ -50,6 +53,14 @@ export function zeichneRaeume(
     ctx.lineJoin = 'miter';
     ctx.strokeStyle = gewaehlt ? farben.auswahl : farben.linie;
     ctx.stroke();
+
+    zeichneOeffnungen(
+      ctx,
+      vp,
+      raum,
+      { flaeche: farben.flaeche, linie: farben.linie, auswahl: farben.auswahl, text: farben.text },
+      auswahlOeffnung && auswahlOeffnung.raumId === raum.id ? auswahlOeffnung.id : null,
+    );
 
     const sw = schwerpunkt(raum.ecken);
     const c = toScreen(vp, sw.x, sw.y);

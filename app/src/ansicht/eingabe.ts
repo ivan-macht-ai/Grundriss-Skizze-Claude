@@ -16,7 +16,12 @@ export interface Strich {
   art: 'pen' | 'touch' | 'mouse';
 }
 
-export type Werkzeug = 'zeichnen' | 'auswaehlen';
+export type Werkzeug = 'zeichnen' | 'auswaehlen' | 'tuer' | 'fenster';
+
+export interface OeffnungsRef {
+  raumId: number;
+  id: number;
+}
 
 export interface EingabeZustand {
   werkzeug: Werkzeug;
@@ -48,6 +53,16 @@ export interface EingabeHaken {
   endeBewegung(bewegt: boolean): void;
   abbruchBewegung(): void;
   doppeltippe(id: number): void;
+  /** Türen und Fenster */
+  findeOeffnung(weltX: number, weltY: number): OeffnungsRef | null;
+  waehleOeffnung(ref: OeffnungsRef): void;
+  startOeffnungsBewegung(ref: OeffnungsRef, weltX: number, weltY: number): void;
+  oeffnungsBewegung(weltX: number, weltY: number): void;
+  endeOeffnungsBewegung(bewegt: boolean): void;
+  abbruchOeffnungsBewegung(): void;
+  doppeltippeOeffnung(ref: OeffnungsRef): void;
+  /** Werkzeug Tür/Fenster: Tippen setzt eine Öffnung auf die Wand an dieser Stelle */
+  platziere(art: 'tuer' | 'fenster', weltX: number, weltY: number): void;
 }
 
 interface Zeiger {
@@ -76,9 +91,13 @@ export function verbindeEingabe(
   // Raum ziehen (Werkzeug Auswählen)
   let bewegId: number | null = null; // Zeiger-ID
   let bewegRaum: number | null = null;
+  let bewegOeffnung: OeffnungsRef | null = null;
   let bewegStart: { sx: number; sy: number; wx: number; wy: number } | null = null;
   let bewegt = false;
-  let letzterTipp: { zeit: number; sx: number; sy: number; raum: number } | null = null;
+  let letzterTipp: { zeit: number; sx: number; sy: number; ziel: string } | null = null;
+  // Werkzeug Tür/Fenster: Tippen setzt, Ziehen verschiebt die Ansicht
+  let platzierId: number | null = null;
+  let platzStart: { sx: number; sy: number } | null = null;
 
   const lokal = (e: { clientX: number; clientY: number }) => {
     const r = canvas.getBoundingClientRect();
@@ -94,8 +113,12 @@ export function verbindeEingabe(
 
   const brecheBewegungAb = () => {
     if (bewegRaum !== null) haken.abbruchBewegung();
+    if (bewegOeffnung !== null) haken.abbruchOeffnungsBewegung();
     bewegId = null;
     bewegRaum = null;
+    bewegOeffnung = null;
+    platzierId = null;
+    platzStart = null;
     bewegStart = null;
     bewegt = false;
   };
@@ -137,11 +160,26 @@ export function verbindeEingabe(
     }
 
     const w = toWorld(haken.holeAnsicht(), p.x, p.y);
-    if (zustand.werkzeug === 'auswaehlen') {
+    if (zustand.werkzeug === 'tuer' || zustand.werkzeug === 'fenster') {
+      verschiebeId = e.pointerId;
+      platzierId = e.pointerId;
+      platzStart = { sx: p.x, sy: p.y };
+    } else if (zustand.werkzeug === 'auswaehlen') {
       if (e.pointerType === 'mouse' && e.shiftKey) {
         verschiebeId = e.pointerId;
       } else {
-        const treffer = haken.findeRaum(w.x, w.y);
+        const oeffnung = haken.findeOeffnung(w.x, w.y);
+        const treffer = oeffnung ? null : haken.findeRaum(w.x, w.y);
+        if (oeffnung) {
+          haken.waehleOeffnung(oeffnung);
+          bewegId = e.pointerId;
+          bewegOeffnung = oeffnung;
+          bewegStart = { sx: p.x, sy: p.y, wx: w.x, wy: w.y };
+          bewegt = false;
+          haken.startOeffnungsBewegung(oeffnung, w.x, w.y);
+          haken.zustandGeaendert();
+          return;
+        }
         haken.waehleRaum(treffer);
         if (treffer !== null) {
           bewegId = e.pointerId;
@@ -186,7 +224,8 @@ export function verbindeEingabe(
     }
     if (e.pointerId === bewegId && bewegStart) {
       if (!bewegt && Math.hypot(p.x - bewegStart.sx, p.y - bewegStart.sy) > TIPP_WEG) bewegt = true;
-      if (bewegt) haken.bewegung(wp.x - bewegStart.wx, wp.y - bewegStart.wy);
+      if (bewegt && bewegOeffnung) haken.oeffnungsBewegung(wp.x, wp.y);
+      else if (bewegt) haken.bewegung(wp.x - bewegStart.wx, wp.y - bewegStart.wy);
       return;
     }
     if (e.pointerId === verschiebeId) {
@@ -207,30 +246,41 @@ export function verbindeEingabe(
     if (e.pointerType === 'pen') stiftAuf = false;
     if (e.pointerId === strichId) beendeStrich(!abbruch);
     if (e.pointerId === verschiebeId) verschiebeId = null;
-    if (e.pointerId === bewegId && bewegRaum !== null && bewegStart) {
+    if (e.pointerId === platzierId && platzStart) {
+      const start = platzStart;
+      platzierId = null;
+      platzStart = null;
+      if (!abbruch && Math.hypot(lokal(e).x - start.sx, lokal(e).y - start.sy) < TIPP_WEG && (zustand.werkzeug === 'tuer' || zustand.werkzeug === 'fenster')) {
+        const w = toWorld(haken.holeAnsicht(), start.sx, start.sy);
+        haken.platziere(zustand.werkzeug, w.x, w.y);
+      }
+    }
+    if (e.pointerId === bewegId && (bewegRaum !== null || bewegOeffnung !== null) && bewegStart) {
       const raum = bewegRaum;
+      const oeffnung = bewegOeffnung;
       const start = bewegStart;
       const warBewegt = bewegt;
       bewegId = null;
       bewegRaum = null;
+      bewegOeffnung = null;
       bewegStart = null;
       bewegt = false;
-      if (abbruch) haken.abbruchBewegung();
-      else {
-        haken.endeBewegung(warBewegt);
+      if (abbruch) {
+        if (oeffnung) haken.abbruchOeffnungsBewegung();
+        else haken.abbruchBewegung();
+      } else {
+        if (oeffnung) haken.endeOeffnungsBewegung(warBewegt);
+        else haken.endeBewegung(warBewegt);
         if (!warBewegt) {
-          // Tippen; zwei Tipps kurz hintereinander auf denselben Raum öffnen das Bearbeiten
+          // Tippen; zwei Tipps kurz hintereinander auf dasselbe Ziel öffnen das Bearbeiten
+          const ziel = oeffnung ? `o${oeffnung.raumId}:${oeffnung.id}` : `r${raum}`;
           const jetzt = performance.now();
           const l = letzterTipp;
-          if (
-            l &&
-            l.raum === raum &&
-            jetzt - l.zeit < DOPPEL_ZEIT &&
-            Math.hypot(l.sx - start.sx, l.sy - start.sy) < DOPPEL_WEG
-          ) {
+          if (l && l.ziel === ziel && jetzt - l.zeit < DOPPEL_ZEIT && Math.hypot(l.sx - start.sx, l.sy - start.sy) < DOPPEL_WEG) {
             letzterTipp = null;
-            haken.doppeltippe(raum);
-          } else letzterTipp = { zeit: jetzt, sx: start.sx, sy: start.sy, raum };
+            if (oeffnung) haken.doppeltippeOeffnung(oeffnung);
+            else if (raum !== null) haken.doppeltippe(raum);
+          } else letzterTipp = { zeit: jetzt, sx: start.sx, sy: start.sy, ziel };
         }
       }
     }
