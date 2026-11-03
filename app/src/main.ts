@@ -13,8 +13,8 @@ import { findeKante, findeOeffnung, kante as seitenKante, neueOeffnung, passeOef
 import type { Oeffnung } from './modell/typen';
 import { leseBreite, leseLaenge, zeigeLaenge } from './modell/zahlen';
 import { macheVerschiebbar } from './oberflaeche/verschiebbar';
-import { erzeugeMusterPdf } from './pdf/musterPdf';
-import { ladeToleranzen, speichereToleranzen } from './speicher/einstellungen';
+import { erzeugeGrundrissPdf, type Kunde } from './pdf/grundriss';
+import { ladeJson, ladeToleranzen, speichereJson, speichereToleranzen } from './speicher/einstellungen';
 import { kommaZahl, zeichneRaeume } from './zeichnen/raeume';
 
 const canvas = document.getElementById('flaeche') as HTMLCanvasElement;
@@ -708,25 +708,56 @@ btn('leisten-standard').addEventListener('click', () => {
   leisten.forEach((l) => l.zuruecksetzen());
 });
 
-// Muster-PDF: Download-Versuch und Anzeige im Fenster (Download kann in der Vorschau gesperrt sein).
+// PDF: Kunde, Format und Maßstab wählen, dann erzeugen und anzeigen
+const pdfDialog = document.getElementById('pdf-dialog')!;
+const pdfFehler = document.getElementById('pdf-dialog-fehler')!;
+const kName = document.getElementById('kunde-name') as HTMLInputElement;
+const kAdresse = document.getElementById('kunde-adresse') as HTMLInputElement;
+const kNummer = document.getElementById('kunde-nummer') as HTMLInputElement;
+const pdfFormat = document.getElementById('pdf-format') as HTMLSelectElement;
+const pdfMassstab = document.getElementById('pdf-massstab') as HTMLSelectElement;
 const fenster = document.getElementById('pdf-fenster')!;
 const rahmen = document.getElementById('pdf-rahmen') as HTMLIFrameElement;
 const hinweis = document.getElementById('pdf-hinweis')!;
 let pdfUrl: string | null = null;
 
-btn('btn-pdf').addEventListener('click', async () => {
+btn('btn-pdf').addEventListener('click', () => {
+  const gespeichert = ladeJson<Partial<Kunde>>('skizze.kunde') ?? {};
+  kName.value = gespeichert.name ?? '';
+  kAdresse.value = gespeichert.adresse ?? '';
+  kNummer.value = gespeichert.nummer ?? '';
+  pdfFehler.hidden = true;
+  pdfDialog.hidden = false;
+});
+btn('pdf-dialog-zu').addEventListener('click', () => (pdfDialog.hidden = true));
+
+btn('pdf-erzeugen').addEventListener('click', async () => {
+  if (raeume.length === 0) {
+    pdfFehler.textContent = 'Zeichne zuerst einen Raum, dann gibt es etwas für das PDF.';
+    pdfFehler.hidden = false;
+    return;
+  }
+  const kunde: Kunde = { name: kName.value.trim(), adresse: kAdresse.value.trim(), nummer: kNummer.value.trim() };
+  speichereJson('skizze.kunde', kunde);
+  const quer = pdfFormat.value === 'quer';
+  const nenner = pdfMassstab.value === 'auto' ? 'auto' : Number(pdfMassstab.value);
+  pdfDialog.hidden = true;
   hinweis.textContent = 'PDF wird erzeugt …';
+  document.getElementById('pdf-titel')!.textContent = 'PDF wird erzeugt …';
   fenster.hidden = false;
   try {
-    const bytes = await erzeugeMusterPdf();
+    const erg = await erzeugeGrundrissPdf(raeume, { quer, nenner, kunde, datum: new Date().toLocaleDateString('de-DE') });
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    pdfUrl = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
+    pdfUrl = URL.createObjectURL(new Blob([erg.bytes as BlobPart], { type: 'application/pdf' }));
     rahmen.src = pdfUrl;
+    document.getElementById('pdf-titel')!.textContent = `A4 ${quer ? 'quer' : 'hoch'}, Maßstab 1:${erg.nenner}`;
+    const dateiName = `grundriss-${(kunde.name || 'skizze').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'skizze'}-1zu${erg.nenner}.pdf`;
     const a = document.createElement('a');
     a.href = pdfUrl;
-    a.download = 'muster-grundriss-1zu50.pdf';
+    a.download = dateiName;
     a.click();
     hinweis.textContent =
+      (erg.hinweis ? `${erg.hinweis} ` : '') +
       'Wird das PDF hier nicht angezeigt, erlaubt dieser Browser die Anzeige nicht. Das Herunterladen läuft dann über die installierte App.';
   } catch (fehler) {
     hinweis.textContent = `PDF konnte nicht erzeugt werden: ${(fehler as Error).message}`;

@@ -22,7 +22,7 @@
       </button>
       <button id="btn-pdf" type="button" class="haupt">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z M14 3v5h5 M9 13h6 M9 17h6"/></svg>
-        <span>Muster-PDF</span>
+        <span>PDF</span>
       </button>
     </header>
 
@@ -109,6 +109,40 @@
       </div>
     </div>
 
+    <div id="pdf-dialog" class="dialog" hidden>
+      <div class="dialog-tafel" role="dialog" aria-modal="true" aria-labelledby="pdf-dialog-titel">
+        <div class="dialog-kopf">
+          <strong id="pdf-dialog-titel">PDF erzeugen</strong>
+          <button id="pdf-dialog-zu" type="button">Abbrechen</button>
+        </div>
+        <div class="dialog-inhalt">
+          <p class="hilfe">Der Grundriss kommt als Vektor-PDF auf A4, mit Maßen, Maßstabsbalken und Schriftkopf. Die Kundendaten stehen im Schriftkopf und bleiben im Gerät gespeichert.</p>
+          <div class="feld"><label for="kunde-name">Kundenname</label><input id="kunde-name" type="text" autocomplete="off" maxlength="80" /></div>
+          <div class="feld"><label for="kunde-adresse">Adresse</label><input id="kunde-adresse" type="text" autocomplete="off" maxlength="120" /></div>
+          <div class="feld"><label for="kunde-nummer">Kundennummer</label><input id="kunde-nummer" type="text" autocomplete="off" maxlength="40" /></div>
+          <div class="seiten-zeile">
+            <label for="pdf-format">Format</label>
+            <select id="pdf-format"><option value="quer">A4 quer</option><option value="hoch">A4 hoch</option></select>
+          </div>
+          <div class="seiten-zeile">
+            <label for="pdf-massstab">Maßstab</label>
+            <select id="pdf-massstab">
+              <option value="auto">automatisch</option>
+              <option value="20">1:20</option>
+              <option value="25">1:25</option>
+              <option value="50">1:50</option>
+              <option value="100">1:100</option>
+              <option value="200">1:200</option>
+            </select>
+          </div>
+          <p id="pdf-dialog-fehler" class="fehlertext" role="alert" hidden></p>
+          <div class="dialog-knoepfe">
+            <button id="pdf-erzeugen" type="button" class="haupt">PDF erzeugen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="oeffnung-dialog" class="dialog" hidden>
       <div class="dialog-tafel" role="dialog" aria-modal="true" aria-labelledby="oeffnung-titel">
         <div class="dialog-kopf">
@@ -179,7 +213,7 @@
 
     <div id="pdf-fenster" class="pdf-fenster" hidden>
       <div class="pdf-kopf">
-        <span>Muster-PDF, A4 quer, Maßstab 1:50</span>
+        <span id="pdf-titel">PDF</span>
         <button id="pdf-zu" type="button">Schließen</button>
       </div>
       <iframe id="pdf-rahmen" title="PDF-Vorschau"></iframe>

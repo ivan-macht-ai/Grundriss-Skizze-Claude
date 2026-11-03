@@ -10,7 +10,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 - [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung (Kern fertig, Reste siehe Etappe)
 - [ ] 1d Wände und Zwischenwände (Kern fertig, Rest: Wanddicke in der Bemaßung)
 - [x] 1e Türen und Fenster (Kern fertig, Reste siehe Etappe)
-- [ ] 1f Fertiges PDF und Offline-Betrieb (PWA)
+- [x] 1f Fertiges PDF und Offline-Betrieb (PWA) (Kern fertig; Prüfung durch den Nutzer: PDF ausdrucken und nachmessen, offline auf dem iPad)
 - [ ] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück
 - [ ] 2b Versionen mit Vorschaubild
 - [ ] 3a Server im Docker-Container auf dem Mini-PC
@@ -216,10 +216,10 @@ Abhängigkeiten: 1d. Größe: mittel. Ort: Cloud.
 
 ### 1f Fertiges PDF und Offline-Betrieb
 Ziel: Das vollständige PDF und die App laufen ohne Internet.
-- [ ] Gemeinsame Zeichenbefehle für Bildschirm und PDF
-- [ ] A4 hoch/quer, Maßstab automatisch (größter passender aus 1:20, 1:25, 1:50, 1:100) oder von Hand
-- [ ] Maßstabsbalken, Nordpfeil (drehbar), Schriftkopf mit Kundenname, Adresse, Kundennummer, Datum, Maßstab
-- [ ] Test: Länge im PDF in mm stimmt mit Maßstab überein
+- [ ] Gemeinsame Zeichenbefehle für Bildschirm und PDF (bewusst offen: Bildschirm und PDF haben je eine eigene Zeichenroutine; Darstellung ist angeglichen, Gefahr: beide laufen auseinander)
+- [x] A4 hoch/quer, Maßstab automatisch (größter passender aus 1:20, 1:25, 1:50, 1:100, 1:200) oder von Hand, mit Hinweis und Vorschlag, wenn es nicht passt
+- [x] Maßstabsbalken, Nordpfeil (noch nicht drehbar), Schriftkopf mit Kundenname, Adresse, Kundennummer, Datum, Maßstab
+- [x] Test: Länge im PDF in mm stimmt mit Maßstab überein (4 m bei 1:50 = 80 mm), PDF ohne Bilder, Text im PDF
 - [x] PWA: Manifest, Symbol, Service Worker, Installieren auf dem Startbildschirm (vorgezogen, vom Nutzer auf dem iPad zu testen)
 Testen: PDF erzeugen und ausdrucken, mit Lineal nachmessen. App installieren, Flugmodus an, App öffnen, zeichnen, PDF erzeugen.
 Abhängigkeiten: 1e. Größe: mittel. Ort: Cloud.
@@ -349,8 +349,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
   - Maßlinien überschneiden sich noch: an Nachbarseiten entfallen sie, aber zwischen mehreren Räumen und an Ecken kann es weiter kollidieren. Lösung überlegen (zum Beispiel Maßlinien nur außen am Gesamtumriss, Umschalter innen/außen, Abstand staffeln).
   - Beim Auflegen der Finger "pulsiert" etwas auf dem Tablet. Ursache suchen (vermutlich Neuzeichnen oder Statuszeile bei jeder Berührung, oder Hinweistext).
   - Stifteingabe am Tablet testen (Handballen-Filter, Zeichnen, Doppeltippen mit Stift).
-- **Nächste Etappe:** 1f (fertiges PDF mit allem, was gezeichnet wurde, und Offline-Betrieb prüfen). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße (Raummaße, Öffnungsbreiten).
-- Türen und Fenster sind in der Vorschau gebaut (1e), kommen aber noch nicht ins PDF (1f).
+- **Stand nach 1f:** Räume, Wände, Zwischenwände, Türen, Fenster kommen ins PDF (Wände und Öffnungen als Umrisse, nicht gefüllt, damit sie sich gut in CAD einlesen lassen). Der Nutzer wählt Kunde, Format, Maßstab im Dialog PDF.
+- **Nächste Etappe:** 2a (Speichern auf dem Gerät, Skizzenliste, Kundendaten, Quelldatei sichern). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße auf dem Bildschirm (Raummaße, Öffnungsbreiten).
 - Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
 - Zwei Finger auf dem Touchpad (Laptop) schicken Mausrad-Ereignisse. Früher wurde senkrechtes Wischen als Zoom gedeutet (Fehler, behoben): Jetzt verschiebt das Mausrad/Touchpad in alle Richtungen, Zoomen mit Spreizen, Strg + Rad oder Zoomknöpfen. Zwei Finger auf dem Touchscreen des Tablets: noch zu testen (Statuszeile zeigt "Vom Browser abgebrochen").
 - Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.
