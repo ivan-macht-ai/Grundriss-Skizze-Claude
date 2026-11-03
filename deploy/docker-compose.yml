@@ -1,0 +1,12 @@
+# Startet die App auf Port 8080, nur auf dem Rechner selbst erreichbar (127.0.0.1).
+# Von außen kommt man über Tailscale heran, siehe README.md in diesem Ordner.
+services:
+  skizze:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: skizze
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    mem_limit: 64m

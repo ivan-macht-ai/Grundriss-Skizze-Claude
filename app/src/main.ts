@@ -471,6 +471,20 @@ btn('pdf-zu').addEventListener('click', () => {
   rahmen.removeAttribute('src');
 });
 
+// Offline-Speicher: nur als eigene Seite über HTTPS oder localhost (installierte App), nicht eingebettet in einer Vorschau.
+if ('serviceWorker' in navigator && window.top === window.self && location.protocol.startsWith('http')) {
+  import('virtual:pwa-register')
+    .then(({ registerSW }) =>
+      registerSW({
+        onNeedRefresh: () => zeigeHinweis('Neue Version bereit. Schließe die App und öffne sie neu.', false),
+        onOfflineReady: () => zeigeHinweis('Fertig für den Betrieb ohne Internet.', false),
+      }),
+    )
+    .catch(() => {
+      /* ohne Service Worker läuft die App trotzdem, nur nicht offline */
+    });
+}
+
 window.addEventListener('resize', passeGroesseAn);
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', plane);
 passeGroesseAn();

@@ -18,6 +18,7 @@
     "@types/node": "^22.10.0",
     "typescript": "^5.6.3",
     "vite": "^6.0.7",
+    "vite-plugin-pwa": "^0.21.2",
     "vitest": "^3.0.5"
   }
 }

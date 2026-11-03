@@ -158,6 +158,8 @@ deploy/
 
 ## 4. Etappen
 
+Hinweis: Ein erstes Docker-Paket (nginx statt Traefik, Zugriff über `tailscale serve`) liegt unter `deploy/`. Es wurde vorgezogen, damit der Nutzer die App auf dem iPad installieren kann. Der Server mit Datenbank folgt in Etappe 3a.
+
 Jede Etappe ist einzeln lauffähig und wird einzeln gepusht. Größe: klein = halbe Sitzung, mittel = eine Sitzung, groß = muss geteilt werden. Der Vorschlag des Nutzers wurde in kleinere Teile geteilt, weil Etappe 1 als Ganzes nicht in eine Sitzung passt.
 ### 1a Gerüst, Zeichenfläche, Muster-PDF für HottCAD
 Ziel: Ein lauffähiges Projekt mit Zeichenfläche und einem Muster-PDF, das HottCAD testen kann.
@@ -217,7 +219,7 @@ Ziel: Das vollständige PDF und die App laufen ohne Internet.
 - [ ] A4 hoch/quer, Maßstab automatisch (größter passender aus 1:20, 1:25, 1:50, 1:100) oder von Hand
 - [ ] Maßstabsbalken, Nordpfeil (drehbar), Schriftkopf mit Kundenname, Adresse, Kundennummer, Datum, Maßstab
 - [ ] Test: Länge im PDF in mm stimmt mit Maßstab überein
-- [ ] PWA: Manifest, Symbol, Service Worker, Installieren auf dem Startbildschirm
+- [x] PWA: Manifest, Symbol, Service Worker, Installieren auf dem Startbildschirm (vorgezogen, vom Nutzer auf dem iPad zu testen)
 Testen: PDF erzeugen und ausdrucken, mit Lineal nachmessen. App installieren, Flugmodus an, App öffnen, zeichnen, PDF erzeugen.
 Abhängigkeiten: 1e. Größe: mittel. Ort: Cloud.
 

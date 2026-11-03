@@ -11,7 +11,10 @@ if (!ziel) {
 const dist = new URL('../dist/', import.meta.url).pathname;
 const html = readFileSync(join(dist, 'index.html'), 'utf8');
 const assets = readdirSync(join(dist, 'assets'));
-const js = assets.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(dist, 'assets', f), 'utf8')).join('\n');
+// Nur das Hauptprogramm (das, was index.html lädt). Nachgeladene Teile (Offline-Speicher) laufen in der Vorschau nicht.
+const haupt = /<script[^>]*src="\.\/assets\/([^"]+\.js)"/.exec(html)?.[1];
+if (!haupt) throw new Error('Hauptprogramm in index.html nicht gefunden');
+const js = readFileSync(join(dist, 'assets', haupt), 'utf8');
 const css = assets.filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(dist, 'assets', f), 'utf8')).join('\n');
 
 // Das Ersatzzeichen U+FFFD (kommt in der PDF-Bibliothek vor) wird als Escape geschrieben; bedeutet im Code dasselbe.
