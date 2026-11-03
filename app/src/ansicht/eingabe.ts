@@ -6,7 +6,8 @@
 //  - Werkzeug "Auswählen": Raum antippen wählt ihn, Ziehen verschiebt ihn, Doppeltippen öffnet das Bearbeiten.
 //    Ziehen auf leerer Fläche verschiebt die Ansicht.
 //  - Solange der Stift aufliegt, werden Finger ignoriert (Handballen).
-//  - Maus: Umschalt + ziehen verschiebt die Ansicht; Mausrad zoomt; Trackpad-Wischen verschiebt.
+//  - Touchpad und Mausrad: verschieben in alle Richtungen. Zoomen: Spreizen, Strg + Rad oder Zoomknöpfe.
+//  - Maus: Umschalt + ziehen verschiebt ebenfalls die Ansicht.
 
 import { panBy, toWorld, zoomAt, type Viewport } from './viewport';
 
@@ -240,6 +241,8 @@ export function verbindeEingabe(
     ende(e, true);
   });
 
+  // Mausrad und Touchpad: Zwei Finger auf dem Touchpad (und das Mausrad) verschieben die Ansicht in alle Richtungen.
+  // Zoomen geht mit Spreizen auf dem Touchpad, Strg + Mausrad oder den Zoomknöpfen.
   canvas.addEventListener(
     'wheel',
     (e) => {
@@ -247,12 +250,16 @@ export function verbindeEingabe(
       const r = canvas.getBoundingClientRect();
       const px = e.clientX - r.left;
       const py = e.clientY - r.top;
-      // Trackpad-Wischen (Nachkommastellen oder seitlich) verschiebt; Mausrad und Zwei-Finger-Spreizen zoomen.
-      const trackpadWischen = !e.ctrlKey && (e.deltaX !== 0 || !Number.isInteger(e.deltaY));
-      if (trackpadWischen) {
-        haken.setzeAnsicht(panBy(haken.holeAnsicht(), -e.deltaX, -e.deltaY));
+      if (e.ctrlKey || e.metaKey) {
+        // Spreizen auf dem Touchpad meldet sich als Strg + Rad. Große Sprünge (Mausrad) werden gedeckelt.
+        const d = Math.max(-40, Math.min(40, e.deltaY));
+        haken.setzeAnsicht(zoomAt(haken.holeAnsicht(), px, py, Math.exp(-d * 0.01)));
       } else {
-        haken.setzeAnsicht(zoomAt(haken.holeAnsicht(), px, py, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))));
+        // Zeilen- oder Seitenmodus (manche Mäuse) in Pixel umrechnen
+        const faktor = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? r.height : 1;
+        const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX;
+        const dy = e.shiftKey && e.deltaX === 0 ? 0 : e.deltaY;
+        haken.setzeAnsicht(panBy(haken.holeAnsicht(), -dx * faktor, -dy * faktor));
       }
     },
     { passive: false },

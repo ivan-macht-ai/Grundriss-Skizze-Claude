@@ -343,7 +343,7 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 ## 8. Notizen für später
 
 - Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
-- Zwei-Finger-Verschieben nach oben/unten ging in der Vorschau auf dem Tablet des Nutzers nicht, im Test-Browser schon. Verdacht: Gesten der umgebenden Seite. Prüfen, sobald die App installiert läuft (Etappe 1f). Bis dahin hilft das Werkzeug "Verschieben".
+- Zwei Finger auf dem Touchpad (Laptop) schicken Mausrad-Ereignisse. Früher wurde senkrechtes Wischen als Zoom gedeutet (Fehler, behoben): Jetzt verschiebt das Mausrad/Touchpad in alle Richtungen, Zoomen mit Spreizen, Strg + Rad oder Zoomknöpfen. Zwei Finger auf dem Touchscreen des Tablets: noch zu testen (Statuszeile zeigt "Vom Browser abgebrochen").
 - Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.
 - Freie Winkel (optional).
 - Weitere Symbole nach Bedarf.
