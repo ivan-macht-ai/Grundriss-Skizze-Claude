@@ -1,6 +1,7 @@
 import { flaeche, schwerpunkt } from '../geometrie/polygon';
 import { dist } from '../geometrie/vec';
 import type { Raum } from '../modell/typen';
+import { dickenVon, nachbarSeiten, waendeUmriss } from '../modell/waende';
 import { toScreen, type Viewport } from '../ansicht/viewport';
 
 export interface RaumFarben {
@@ -9,6 +10,7 @@ export interface RaumFarben {
   text: string;
   leise: string;
   auswahl: string;
+  wand: string;
 }
 
 export const kommaZahl = (wert: number, stellen = 2): string => wert.toFixed(stellen).replace('.', ',');
@@ -23,6 +25,22 @@ export function zeichneRaeume(
   for (const raum of raeume) {
     const gewaehlt = raum.id === auswahlId;
     const sp = raum.ecken.map((p) => toScreen(vp, p.x, p.y));
+    const dicken = dickenVon(raum);
+    // An Seiten mit Nachbarraum würden sich die Maßlinien überlagern: dort keine Maßlinie
+    const nachbarn = new Set(nachbarSeiten(raum, raeume.filter((q) => q.id !== raum.id), 0.7).map((f) => f.kante));
+
+    // Wände: Fläche zwischen Außenumriss und Raum (Löcher-Füllung), dahinter liegt der Raum
+    if (dicken.some((d) => d > 0.0005)) {
+      const aussen = waendeUmriss(raum.ecken, dicken).map((p) => toScreen(vp, p.x, p.y));
+      ctx.beginPath();
+      aussen.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
+      ctx.closePath();
+      sp.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
+      ctx.closePath();
+      ctx.fillStyle = farben.wand;
+      ctx.fill('evenodd');
+    }
+
     ctx.beginPath();
     sp.forEach((q, i) => (i === 0 ? ctx.moveTo(q.x, q.y) : ctx.lineTo(q.x, q.y)));
     ctx.closePath();
@@ -54,7 +72,7 @@ export function zeichneRaeume(
       const a = sp[i];
       const b = sp[j];
       const bild = Math.hypot(b.x - a.x, b.y - a.y);
-      if (bild < 52) continue;
+      if (bild < 52 || nachbarn.has(i)) continue;
       const mx = (a.x + b.x) / 2;
       const my = (a.y + b.y) / 2;
       let nx = -(b.y - a.y) / bild;
@@ -63,7 +81,7 @@ export function zeichneRaeume(
         nx = -nx;
         ny = -ny;
       }
-      const versatz = 20;
+      const versatz = 20 + dicken[i] * vp.scale;
       const ax = a.x + nx * versatz;
       const ay = a.y + ny * versatz;
       const bx = b.x + nx * versatz;

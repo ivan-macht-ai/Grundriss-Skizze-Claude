@@ -16,6 +16,10 @@ export interface Toleranzen {
   minFlaeche: number;
   /** Rundungen an Ecken ignorieren: Seiten kürzer als dieser Anteil der Strichlänge zählen als Rundung und verschwinden. */
   rundung: number;
+  /** Vorschlag für die Dicke von Außenwänden in Metern (nicht fest, jede Wand ist frei einstellbar). */
+  wandAussen: number;
+  /** Vorschlag für die Dicke von Zwischenwänden in Metern. */
+  wandInnen: number;
 }
 
 export const STANDARD_TOLERANZEN: Toleranzen = {
@@ -26,6 +30,8 @@ export const STANDARD_TOLERANZEN: Toleranzen = {
   ecken: 0.05,
   minFlaeche: 0.5,
   rundung: 0.06,
+  wandAussen: 0.24,
+  wandInnen: 0.115,
 };
 
 export interface ToleranzBeschreibung {
@@ -47,5 +53,7 @@ export const TOLERANZ_BESCHREIBUNG: ToleranzBeschreibung[] = [
   { schluessel: 'raster', name: 'Rundung der Maße', hilfe: 'Maße werden auf dieses Raster gerundet.', min: 1, max: 20, schritt: 1, anzeigeFaktor: 100, einheit: ' cm' },
   { schluessel: 'ecken', name: 'Ecken-Empfindlichkeit', hilfe: 'Kleiner = die App findet mehr Ecken, größer = sie glättet stärker.', min: 2, max: 15, schritt: 1, anzeigeFaktor: 100, einheit: ' %' },
   { schluessel: 'rundung', name: 'Ecken-Rundung ignorieren', hilfe: 'Abgerundete Ecken werden zu scharfen Ecken. Größer = rundere Ecken sind erlaubt, aber kleine Absätze gehen verloren.', min: 0, max: 12, schritt: 1, anzeigeFaktor: 100, einheit: ' %' },
+  { schluessel: 'wandAussen', name: 'Vorschlag Außenwand', hilfe: 'Diese Dicke schlägt die App vor, wenn du Wände um einen Raum einschaltest. Jede Wand lässt sich einzeln ändern.', min: 6, max: 50, schritt: 0.5, anzeigeFaktor: 100, einheit: ' cm' },
+  { schluessel: 'wandInnen', name: 'Vorschlag Zwischenwand', hilfe: 'Diese Dicke schlägt die App vor, wenn sie zwischen zwei Räumen eine Wand erkennt.', min: 5, max: 40, schritt: 0.5, anzeigeFaktor: 100, einheit: ' cm' },
   { schluessel: 'minFlaeche', name: 'Kleinste Fläche', hilfe: 'Kleinere Formen werden nicht als Raum erkannt.', min: 0.1, max: 3, schritt: 0.1, anzeigeFaktor: 1, einheit: ' m²' },
 ];

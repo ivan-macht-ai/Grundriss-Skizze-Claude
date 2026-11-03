@@ -88,12 +88,32 @@
             <label for="raum-name">Name</label>
             <input id="raum-name" type="text" autocomplete="off" placeholder="zum Beispiel Keller" maxlength="40" />
           </div>
-          <p class="hilfe">Seiten (innen gemessen). Du kannst Zahlen so schreiben: <strong>4,20</strong> oder <strong>420</strong> oder <strong>420 cm</strong>. Ändert sich eine Länge, wandert die Wand am Ende der Seite mit.</p>
+          <label class="haken-zeile"><input id="raum-waende" type="checkbox" /> Wände um den Raum</label>
+          <p class="hilfe">Längen sind innen gemessen. Schreibe zum Beispiel <strong>4,20</strong> oder <strong>420</strong> oder <strong>420 cm</strong>. Die Wanddicke steht in Zentimetern, zum Beispiel <strong>24</strong> oder <strong>11,5</strong>. Ändert sich eine Länge, wandert die Wand am Ende der Seite mit.</p>
+          <div class="seiten-kopf"><span>Länge</span><span>Wand (cm)</span></div>
           <div id="raum-seiten"></div>
           <p id="raum-fehler" class="fehlertext" role="alert" hidden></p>
           <div class="dialog-knoepfe">
             <button id="raum-uebernehmen" type="button" class="haupt">Übernehmen</button>
             <button id="raum-loeschen" type="button" class="gefahr-knopf">Raum löschen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="wand-dialog" class="dialog" hidden>
+      <div class="dialog-tafel" role="dialog" aria-modal="true" aria-labelledby="wand-titel">
+        <div class="dialog-kopf"><strong id="wand-titel">Zwischenwand erkannt</strong></div>
+        <div class="dialog-inhalt">
+          <p id="wand-text" class="hilfe"></p>
+          <div class="feld">
+            <label for="wand-dicke">Dicke der Wand (cm)</label>
+            <input id="wand-dicke" type="text" inputmode="decimal" autocomplete="off" />
+          </div>
+          <p id="wand-fehler" class="fehlertext" role="alert" hidden></p>
+          <div class="dialog-knoepfe">
+            <button id="wand-ja" type="button" class="haupt">Wand einfügen</button>
+            <button id="wand-nein" type="button">Keine Wand</button>
           </div>
         </div>
       </div>

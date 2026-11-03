@@ -3,7 +3,7 @@
 // senkrecht, an der oberen oder unteren Kante waagerecht. Die Position wird im Gerät gemerkt.
 import { ladeJson, loescheSchluessel, speichereJson } from '../speicher/einstellungen';
 
-type Kante = 'links' | 'rechts' | 'oben' | 'unten';
+export type Kante = 'links' | 'rechts' | 'oben' | 'unten';
 
 interface Platz {
   kante: Kante;
@@ -14,6 +14,8 @@ interface Platz {
 export interface Verschiebbar {
   zuruecksetzen(): void;
   einpassen(): void;
+  /** An welcher Kante die Leiste gerade sitzt (null: Ausgangsplatz, links oder rechts, senkrecht) */
+  kante(): Kante | null;
 }
 
 const RAND = 10;
@@ -91,6 +93,7 @@ export function macheVerschiebbar(el: HTMLElement, griff: HTMLElement, buehne: H
   griff.addEventListener('pointercancel', ende);
 
   return {
+    kante: () => (gueltig(platz) ? platz.kante : null),
     einpassen,
     zuruecksetzen: () => {
       platz = null;

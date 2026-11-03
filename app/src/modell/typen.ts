@@ -7,4 +7,6 @@ export interface Raum {
   ecken: P[];
   /** Nur zur Anzeige: Rechteck, L-Form usw. */
   form: string;
+  /** Wanddicke je Seite in Metern (Seite i = Ecke i bis Ecke i+1), nach außen angetragen. 0 oder fehlend = keine Wand. */
+  waende?: number[];
 }

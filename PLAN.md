@@ -8,7 +8,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 - [x] 1a Gerüst, Zeichenfläche, Muster-PDF (Stift und Handballen auf dem Tablet noch zu testen)
 - [x] 1b Formenerkennung (von Opus geprüft, Befunde eingearbeitet)
 - [ ] 1c Räume bearbeiten, Maße eintippen, Bemaßung (Kern fertig, Reste siehe Etappe)
-- [ ] 1d Wände und Zwischenwände
+- [ ] 1d Wände und Zwischenwände (Kern fertig, Rest: Wanddicke in der Bemaßung)
 - [ ] 1e Türen und Fenster
 - [ ] 1f Fertiges PDF und Offline-Betrieb (PWA)
 - [ ] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück
@@ -196,11 +196,12 @@ Abhängigkeiten: 1b. Größe: mittel. Ort: Cloud.
 
 ### 1d Wände und Zwischenwände
 Ziel: Wände werden angelegt und bemaßt.
-- [ ] Schalter "Wände um den Raum" mit Standarddicke, Dicke pro Kante änderbar
-- [ ] Wände nach außen versetzt, Ecken sauber verschnitten
-- [ ] Zwischenwand-Erkennung: zwei Räume liegen parallel nah beieinander; Dialog fragt Dicke ab; Räume rücken auf diesen Abstand
-- [ ] Wanddicken in der Bemaßung
+- [x] Haken "Wände um den Raum" mit Vorschlag (24 cm, in den Einstellungen änderbar), Dicke pro Seite frei änderbar; Seiten mit Nachbarraum bekommen keine Außenwand
+- [x] Wände nach außen versetzt, Ecken sauber verschnitten (Gehrung)
+- [x] Zwischenwand-Erkennung: zwei Räume liegen parallel nah beieinander (bis 60 cm, Überlappung ab 30 cm); Dialog fragt Dicke ab (Vorschlag 11,5 cm); Raum rückt auf diesen Abstand. Die Wand gehört zu dem Raum, der bewegt wurde
+- [ ] Wanddicken in der Bemaßung (Maßlinien rücken hinter die Wand; die Dicke selbst ist noch nicht bemaßt, Maßlinien an Nachbarseiten entfallen)
 Testen: Zwei Räume nebeneinander legen, Abfrage beantworten, Wände an- und ausschalten.
+Hinweis: Der Hinweistext (Toast) sitzt oben und wandert nach unten, wenn dort eine Leiste liegt.
 Abhängigkeiten: 1c. Größe: mittel. Ort: Cloud.
 
 ### 1e Türen und Fenster

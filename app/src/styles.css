@@ -19,6 +19,7 @@
   --strich: #12312a;
   --stift: #2a6fdb;
   --raum-fuell: rgba(11, 107, 87, 0.10);
+  --wand: #55625e;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -40,6 +41,7 @@
     --strich: #dcefe8;
     --stift: #7db1ff;
     --raum-fuell: rgba(63, 185, 155, 0.14);
+    --wand: #9bb0a8;
     color-scheme: dark;
   }
 }
@@ -61,6 +63,7 @@
   --strich: #dcefe8;
   --stift: #7db1ff;
   --raum-fuell: rgba(63, 185, 155, 0.14);
+  --wand: #9bb0a8;
   color-scheme: dark;
 }
 
@@ -325,6 +328,10 @@ button:focus-visible {
   box-shadow: 0 6px 20px var(--schatten);
   pointer-events: none;
 }
+.toast.unten {
+  top: auto;
+  bottom: 14px;
+}
 .toast.fehler {
   background: var(--text);
   color: var(--leiste);
@@ -476,8 +483,39 @@ input[type='text']:focus-visible {
   color: var(--text-leise);
 }
 .seiten-zeile input {
-  width: 150px;
+  width: 118px;
   text-align: right;
+}
+.seiten-zeile input.wand-feld {
+  width: 84px;
+}
+.seiten-kopf {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 12.5px;
+  color: var(--text-leise);
+}
+.seiten-kopf span:first-child {
+  width: 118px;
+  text-align: right;
+}
+.seiten-kopf span:last-child {
+  width: 84px;
+  text-align: right;
+}
+.haken-zeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-weight: 600;
+}
+.haken-zeile input {
+  width: 26px;
+  height: 26px;
+  accent-color: var(--akzent);
 }
 .fehlertext {
   margin: 8px 0 0;

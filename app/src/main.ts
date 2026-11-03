@@ -7,6 +7,7 @@ import { erkenneRaum } from './erkennung/erkenne';
 import { flaeche, schwerpunkt } from './geometrie/polygon';
 import { dist } from './geometrie/vec';
 import { ausrichten, punktImVieleck, seitenName, setzeKantenlaenge, verschiebeRaum } from './modell/bearbeiten';
+import { dickenVon, findeZwischenwand, leseDicke, nachbarSeiten, type Zwischenwand } from './modell/waende';
 import type { Raum } from './modell/typen';
 import { leseLaenge, zeigeLaenge } from './modell/zahlen';
 import { macheVerschiebbar } from './oberflaeche/verschiebbar';
@@ -59,6 +60,11 @@ function farbe(name: string): string {
 }
 
 function zeigeHinweis(text: string, fehler: boolean): void {
+  // Der Hinweis sitzt oben. Liegt dort eine Leiste (und unten nicht), wandert er nach unten.
+  const kanten = leisten.map((l) => l.kante());
+  const obenBelegt = kanten.filter((k) => k === 'oben').length;
+  const untenBelegt = kanten.filter((k) => k === 'unten').length;
+  toast.classList.toggle('unten', obenBelegt > untenBelegt);
   toast.textContent = text;
   toast.classList.toggle('fehler', fehler);
   toast.hidden = false;
@@ -122,6 +128,7 @@ function zeichne(): void {
       text: farbe('--text'),
       leise: farbe('--text-leise'),
       auswahl: farbe('--akzent'),
+      wand: farbe('--wand'),
     },
     auswahlId,
   );
@@ -188,6 +195,7 @@ function strichFertig(s: Strich): void {
   zeigeHinweis(`${e.form} erkannt, ${kommaZahl(flaeche(e.ecken), 2)} m²`, false);
   aktualisiere();
   plane();
+  pruefeZwischenwand(raum.id);
 }
 
 // Raum ziehen
@@ -231,9 +239,11 @@ const eingabe = verbindeEingabe(
       plane();
     },
     endeBewegung: (bewegt) => {
-      if (bewegt && ziehOriginal) merke();
+      const bewegterRaum = bewegt && ziehOriginal ? ziehOriginal.id : null;
+      if (bewegterRaum !== null) merke();
       ziehOriginal = null;
       aktualisiere();
+      if (bewegterRaum !== null) pruefeZwischenwand(bewegterRaum);
     },
     abbruchBewegung: () => {
       if (ziehOriginal) {
@@ -300,13 +310,18 @@ const leisten = [
   macheVerschiebbar(document.getElementById('leiste-zoom')!, document.getElementById('griff-zoom')!, buehne, 'zoom'),
 ];
 
-// Raum bearbeiten: Name und Maße von Hand
+// Raum bearbeiten: Name, Maße und Wände von Hand
 const raumDialog = document.getElementById('raum-dialog')!;
 const raumName = document.getElementById('raum-name') as HTMLInputElement;
 const raumSeiten = document.getElementById('raum-seiten')!;
 const raumFehler = document.getElementById('raum-fehler')!;
+const raumWaende = document.getElementById('raum-waende') as HTMLInputElement;
 let bearbeiteId: number | null = null;
-let seitenFelder: { index: number; feld: HTMLInputElement; alt: number }[] = [];
+let laengenFelder: { index: number; feld: HTMLInputElement; alt: number }[] = [];
+let wandFelder: HTMLInputElement[] = [];
+
+/** Zentimeter mit Komma, ohne unnötige Nachkommastellen: 0,24 -> "24", 0,115 -> "11,5" */
+const zeigeCm = (meter: number): string => String(Math.round(meter * 1000) / 10).replace('.', ',');
 
 function oeffneRaumDialog(id: number): void {
   const raum = raeume.find((r) => r.id === id);
@@ -316,8 +331,11 @@ function oeffneRaumDialog(id: number): void {
   raumName.value = raum.name;
   raumFehler.hidden = true;
   raumSeiten.textContent = '';
-  seitenFelder = [];
+  laengenFelder = [];
+  wandFelder = [];
   const mitte = schwerpunkt(raum.ecken);
+  const dicken = dickenVon(raum);
+  raumWaende.checked = dicken.some((d) => d > 0.0005);
   raum.ecken.forEach((p, i) => {
     const q = raum.ecken[(i + 1) % raum.ecken.length];
     const laenge = dist(p, q);
@@ -337,12 +355,21 @@ function oeffneRaumDialog(id: number): void {
     if (name === 'Schräge') {
       feld.disabled = true;
       const klein = document.createElement('small');
-      klein.textContent = 'Schräge: ergibt sich aus den anderen Seiten';
+      klein.textContent = 'Schräge: Länge ergibt sich aus den anderen Seiten';
       label.append(klein);
     }
-    zeile.append(label, feld);
+    const wand = document.createElement('input');
+    wand.type = 'text';
+    wand.className = 'wand-feld';
+    wand.id = `wand-${i}`;
+    wand.inputMode = 'decimal';
+    wand.autocomplete = 'off';
+    wand.value = zeigeCm(dicken[i]);
+    wand.setAttribute('aria-label', `Wanddicke Seite ${i + 1} in Zentimetern`);
+    zeile.append(label, feld, wand);
     raumSeiten.append(zeile);
-    if (name !== 'Schräge') seitenFelder.push({ index: i, feld, alt: laenge });
+    if (name !== 'Schräge') laengenFelder.push({ index: i, feld, alt: laenge });
+    wandFelder.push(wand);
   });
   raumDialog.hidden = false;
   plane();
@@ -356,6 +383,18 @@ function schliesseRaumDialog(): void {
   plane();
 }
 
+// Haken "Wände um den Raum": setzt alle Seiten auf den Vorschlag oder auf null
+raumWaende.addEventListener('change', () => {
+  const raum = raeume.find((r) => r.id === bearbeiteId);
+  // Seiten, an denen ein Nachbarraum liegt, bekommen keine eigene Außenwand (dort entsteht die Zwischenwand)
+  const beiNachbar = new Set(
+    raum ? nachbarSeiten(raum, raeume.filter((r) => r.id !== raum.id), 0.7).map((f) => f.kante) : [],
+  );
+  wandFelder.forEach((f, i) => {
+    f.value = raumWaende.checked && !beiNachbar.has(i) ? zeigeCm(toleranzen.wandAussen) : '0';
+  });
+});
+
 btn('raum-abbrechen').addEventListener('click', schliesseRaumDialog);
 btn('raum-uebernehmen').addEventListener('click', () => {
   const raum = raeume.find((r) => r.id === bearbeiteId);
@@ -365,7 +404,7 @@ btn('raum-uebernehmen').addEventListener('click', () => {
     raumFehler.hidden = false;
   };
   let ecken = raum.ecken;
-  for (const s of seitenFelder) {
+  for (const s of laengenFelder) {
     const neu = leseLaenge(s.feld.value);
     if (neu === null) return zeigeFehler(`Seite ${s.index + 1}: „${s.feld.value}“ ist keine Länge. Schreibe zum Beispiel 4,20.`);
     if (Math.abs(neu - s.alt) < 0.0005) continue;
@@ -373,11 +412,20 @@ btn('raum-uebernehmen').addEventListener('click', () => {
     if (!ergebnis) return zeigeFehler(`Seite ${s.index + 1}: Mit ${zeigeLaenge(neu)} m passt die Form nicht mehr.`);
     ecken = ergebnis;
   }
+  const dicken: number[] = [];
+  for (let i = 0; i < wandFelder.length; i++) {
+    const d = leseDicke(wandFelder[i].value);
+    if (d === null) return zeigeFehler(`Seite ${i + 1}: „${wandFelder[i].value}“ ist keine Wanddicke. Schreibe zum Beispiel 24 (Zentimeter).`);
+    dicken.push(d);
+  }
+  const waende = dicken.some((d) => d > 0.0005) ? dicken : undefined;
   const name = raumName.value.trim() || raum.name;
-  const geaendert = ecken !== raum.ecken || name !== raum.name;
+  const wandAlt = JSON.stringify(raum.waende ?? null);
+  const geaendert = ecken !== raum.ecken || name !== raum.name || JSON.stringify(waende ?? null) !== wandAlt;
   if (geaendert) {
     raum.ecken = ecken;
     raum.name = name;
+    raum.waende = waende;
     merke();
   }
   schliesseRaumDialog();
@@ -390,6 +438,59 @@ btn('raum-loeschen').addEventListener('click', () => {
 });
 raumName.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') btn('raum-uebernehmen').click();
+});
+
+// Zwischenwand: Räume liegen nah beieinander, die App fragt nach der Dicke der Wand dazwischen
+const wandDialog = document.getElementById('wand-dialog')!;
+const wandDicke = document.getElementById('wand-dicke') as HTMLInputElement;
+const wandFehler = document.getElementById('wand-fehler')!;
+let wandAngebot: { raumId: number; z: Zwischenwand } | null = null;
+
+function pruefeZwischenwand(id: number): void {
+  const raum = raeume.find((r) => r.id === id);
+  if (!raum) return;
+  const z = findeZwischenwand(raum, raeume.filter((r) => r.id !== id));
+  if (!z) return;
+  const nachbar = raeume.find((r) => r.id === z.andereId);
+  if (!nachbar) return;
+  wandAngebot = { raumId: id, z };
+  document.getElementById('wand-text')!.textContent = `${raum.name} liegt direkt an ${nachbar.name}. Wie dick ist die Wand dazwischen? Die Wand gehört zu ${raum.name}, der Abstand der Räume passt sich an.`;
+  wandDicke.value = zeigeCm(z.abstand > 0.02 ? z.abstand : toleranzen.wandInnen);
+  wandFehler.hidden = true;
+  wandDialog.hidden = false;
+  window.setTimeout(() => wandDicke.select(), 50);
+}
+
+function schliesseWandDialog(): void {
+  wandDialog.hidden = true;
+  wandAngebot = null;
+}
+
+btn('wand-nein').addEventListener('click', schliesseWandDialog);
+btn('wand-ja').addEventListener('click', () => {
+  if (!wandAngebot) return schliesseWandDialog();
+  const t = leseDicke(wandDicke.value);
+  if (t === null || t < 0.02 || t > 0.6) {
+    wandFehler.textContent = 'Schreibe die Dicke in Zentimetern, zum Beispiel 11,5 (zwischen 2 und 60).';
+    wandFehler.hidden = false;
+    return;
+  }
+  const raum = raeume.find((r) => r.id === wandAngebot!.raumId);
+  if (raum) {
+    const { z } = wandAngebot;
+    // Raum so verschieben, dass zwischen den Innenseiten genau die Wanddicke liegt
+    raum.ecken = verschiebeRaum(raum.ecken, -z.nx * (t - z.abstand), -z.ny * (t - z.abstand));
+    const dicken = dickenVon(raum);
+    dicken[z.kante] = t;
+    raum.waende = dicken;
+    merke();
+  }
+  schliesseWandDialog();
+  aktualisiere();
+  plane();
+});
+wandDicke.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') btn('wand-ja').click();
 });
 
 // Einstellungen der Erkennung
