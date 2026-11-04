@@ -2,6 +2,8 @@ import { flaeche, schwerpunkt } from '../geometrie/polygon';
 import { dist } from '../geometrie/vec';
 import type { Raum } from '../modell/typen';
 import { dickenVon, nachbarSeiten, waendeUmriss } from '../modell/waende';
+import { kante as seitenKante } from '../modell/oeffnungen';
+import { kettenPunkte, laengstesFreiesStueck, zeigeCm } from '../modell/masse';
 import { zeichneOeffnungen } from './oeffnungen';
 import { toScreen, type Viewport } from '../ansicht/viewport';
 
@@ -60,6 +62,7 @@ export function zeichneRaeume(
       raum,
       { flaeche: farben.flaeche, linie: farben.linie, auswahl: farben.auswahl, text: farben.text },
       auswahlOeffnung && auswahlOeffnung.raumId === raum.id ? auswahlOeffnung.id : null,
+      nachbarn,
     );
 
     const sw = schwerpunkt(raum.ecken);
@@ -73,10 +76,28 @@ export function zeichneRaeume(
     ctx.font = '13px system-ui, sans-serif';
     ctx.fillText(`${kommaZahl(flaeche(raum.ecken), 2)} m²`, c.x, c.y + 10);
 
-    // Maße außerhalb: Maßlinie mit Endstrichen, Zahl daneben
+    // Wanddicke in Zentimetern, in der Wand (auf dem längsten Stück ohne Öffnung)
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.fillStyle = farben.flaeche;
+    for (let i = 0; i < raum.ecken.length; i++) {
+      const d = dicken[i];
+      const wandPx = d * vp.scale;
+      const k = seitenKante(raum, i);
+      const stueck = laengstesFreiesStueck(raum, i, 0.4);
+      const text = zeigeCm(d);
+      if (!stueck || wandPx < 11 || (Math.abs(k.dx) > 1e-9 && Math.abs(k.dy) > 1e-9)) continue;
+      const senkrecht = Math.abs(k.nx) > 0.7; // Wand läuft senkrecht: Zahl muss in die Breite der Wand passen
+      const breiteText = ctx.measureText(text).width;
+      if (senkrecht && breiteText + 3 > wandPx) continue;
+      if (Math.abs(stueck.t1 - stueck.t0) * vp.scale < breiteText + 8 && !senkrecht) continue;
+      const t = (stueck.t0 + stueck.t1) / 2;
+      const q = toScreen(vp, k.a.x + k.dx * t + k.nx * (d / 2), k.a.y + k.dy * t + k.ny * (d / 2));
+      ctx.fillText(text, q.x, q.y);
+    }
+
+    // Maße außerhalb: Seiten mit Türen oder Fenstern bekommen eine Maßkette (Abstand, Breite, Abstand)
+    // und darunter das Gesamtmaß. Seiten ohne Öffnung nur das Gesamtmaß.
     ctx.font = '12px system-ui, sans-serif';
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = farben.leise;
     for (let i = 0; i < raum.ecken.length; i++) {
       const j = (i + 1) % raum.ecken.length;
       const laenge = dist(raum.ecken[i], raum.ecken[j]);
@@ -92,35 +113,72 @@ export function zeichneRaeume(
         nx = -nx;
         ny = -ny;
       }
-      // Trägt die Seite Türen oder Fenster, steht dort deren Breite neben der Wand: Maßlinie weiter nach außen
-      const traegtOeffnung = (raum.oeffnungen ?? []).some((o) => o.kante === i);
-      const platzFuerBreite = traegtOeffnung ? Math.abs(nx) * 40 + Math.abs(ny) * 14 : 0;
-      const versatz = 20 + dicken[i] * vp.scale + platzFuerBreite;
-      const ax = a.x + nx * versatz;
-      const ay = a.y + ny * versatz;
-      const bx = b.x + nx * versatz;
-      const by = b.y + ny * versatz;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(bx, by);
-      // Hilfslinien von den Ecken zur Maßlinie
-      ctx.moveTo(a.x + nx * 4, a.y + ny * 4);
-      ctx.lineTo(ax + nx * 4, ay + ny * 4);
-      ctx.moveTo(b.x + nx * 4, b.y + ny * 4);
-      ctx.lineTo(bx + nx * 4, by + ny * 4);
-      // Endstriche (schräg)
-      const tx = (b.x - a.x) / bild;
-      const ty = (b.y - a.y) / bild;
-      for (const [qx, qy] of [[ax, ay], [bx, by]]) {
-        ctx.moveTo(qx - (tx + nx) * 4, qy - (ty + ny) * 4);
-        ctx.lineTo(qx + (tx + nx) * 4, qy + (ty + ny) * 4);
+      const wandPx = dicken[i] * vp.scale;
+      const punkte = kettenPunkte(raum, i);
+      const v1 = 20 + wandPx;
+      if (punkte.length > 2) {
+        const breiteMax = Math.max(...punkte.slice(1).map((p, q) => ctx.measureText(kommaZahl(p - punkte[q], q % 2 === 0 ? 2 : 3)).width));
+        masskette(ctx, a, b, laenge, punkte, nx, ny, v1, wandPx, farben, (q, seg) => kommaZahl(seg, q % 2 === 0 ? 2 : 3), false);
+        masskette(ctx, a, b, laenge, [0, laenge], nx, ny, v1 + 26 + Math.abs(nx) * breiteMax, wandPx, farben, (_q, seg) => `${kommaZahl(seg)} m`, true);
+      } else {
+        masskette(ctx, a, b, laenge, [0, laenge], nx, ny, v1, wandPx, farben, (_q, seg) => `${kommaZahl(seg)} m`, true);
       }
-      ctx.stroke();
-      const text = `${kommaZahl(laenge)} m`;
-      const abstand = versatz + (ctx.measureText(text).width / 2) * Math.abs(nx) + 8 * Math.abs(ny) + 6;
-      ctx.fillStyle = farben.text;
-      ctx.fillText(text, mx + nx * abstand, my + ny * abstand);
     }
   }
   ctx.textAlign = 'start';
+}
+
+/** Eine Maßlinie parallel zur Seite a-b mit Hilfslinien, Endstrichen und Zahlen für jedes Teilstück. */
+function masskette(
+  ctx: CanvasRenderingContext2D,
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  laenge: number,
+  positionen: number[],
+  nx: number,
+  ny: number,
+  versatz: number,
+  wandPx: number,
+  farben: RaumFarben,
+  text: (index: number, teilLaenge: number) => string,
+  immerBeschriften: boolean,
+): void {
+  const bild = Math.hypot(b.x - a.x, b.y - a.y);
+  const tx = (b.x - a.x) / bild;
+  const ty = (b.y - a.y) / bild;
+  const punkt = (t: number, abstand: number) => ({
+    x: a.x + ((b.x - a.x) * t) / laenge + nx * abstand,
+    y: a.y + ((b.y - a.y) * t) / laenge + ny * abstand,
+  });
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = farben.leise;
+  ctx.beginPath();
+  const erstes = punkt(positionen[0], versatz);
+  const letztes = punkt(positionen[positionen.length - 1], versatz);
+  ctx.moveTo(erstes.x, erstes.y);
+  ctx.lineTo(letztes.x, letztes.y);
+  for (const t of positionen) {
+    // Hilfslinie von der Außenseite der Wand zur Maßlinie, Endstrich schräg
+    const von = punkt(t, wandPx + 4);
+    const bis = punkt(t, versatz + 4);
+    ctx.moveTo(von.x, von.y);
+    ctx.lineTo(bis.x, bis.y);
+    const m = punkt(t, versatz);
+    ctx.moveTo(m.x - (tx + nx) * 4, m.y - (ty + ny) * 4);
+    ctx.lineTo(m.x + (tx + nx) * 4, m.y + (ty + ny) * 4);
+  }
+  ctx.stroke();
+  ctx.fillStyle = farben.text;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (let q = 0; q < positionen.length - 1; q++) {
+    const teil = positionen[q + 1] - positionen[q];
+    const beschriftung = text(q, teil);
+    const breite = ctx.measureText(beschriftung).width;
+    const teilPx = (bild * teil) / laenge;
+    if (!immerBeschriften && teilPx < breite + 6) continue;
+    const abstand = versatz + (breite / 2) * Math.abs(nx) + 8 * Math.abs(ny) + 6;
+    const m = punkt((positionen[q] + positionen[q + 1]) / 2, abstand);
+    ctx.fillText(beschriftung, m.x, m.y);
+  }
 }

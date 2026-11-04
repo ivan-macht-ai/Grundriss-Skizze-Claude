@@ -199,7 +199,7 @@ Ziel: Wände werden angelegt und bemaßt.
 - [x] Haken "Wände um den Raum" mit Vorschlag (24 cm, in den Einstellungen änderbar), Dicke pro Seite frei änderbar; Seiten mit Nachbarraum bekommen keine Außenwand
 - [x] Wände nach außen versetzt, Ecken sauber verschnitten (Gehrung)
 - [x] Zwischenwand-Erkennung: zwei Räume liegen parallel nah beieinander (bis 60 cm, Überlappung ab 30 cm); Dialog fragt Dicke ab (Vorschlag 11,5 cm); Raum rückt auf diesen Abstand. Die Wand gehört zu dem Raum, der bewegt wurde
-- [ ] Wanddicken in der Bemaßung (Maßlinien rücken hinter die Wand; die Dicke selbst ist noch nicht bemaßt, Maßlinien an Nachbarseiten entfallen)
+- [x] Wanddicken in der Bemaßung: Zahl in Zentimetern in der Wand (Bildschirm und PDF). Maßlinien an Nachbarseiten entfallen
 Testen: Zwei Räume nebeneinander legen, Abfrage beantworten, Wände an- und ausschalten.
 Hinweis: Der Hinweistext (Toast) sitzt oben und wandert nach unten, wenn dort eine Leiste liegt.
 Abhängigkeiten: 1c. Größe: mittel. Ort: Cloud.
@@ -210,7 +210,7 @@ Ziel: Türen und Fenster in Bauzeichnungs-Darstellung.
 - [x] Fenster: Wandöffnung mit Fensterlinien; Breite
 - [x] Setzen durch Antippen einer Wand (Werkzeuge Tür/Fenster), Ziehen entlang der Wand im Werkzeug Auswählen (5-cm-Raster), Doppeltippen öffnet Breite, Abstand zur Ecke, Anschlag, Aufschlag
 - [x] Ohne Wand (Dicke 0) wird eine schmale Ersatzdarstellung gezeigt
-- [ ] Bemaßung von Breite und Abstand (Breite steht außen an der Öffnung und kollidiert teils mit Maßlinien; Abstand nur im Dialog)
+- [x] Bemaßung von Breite und Abstand: Maßkette an Seiten mit Öffnung (Abstand, Breite, Abstand) und darunter das Gesamtmaß, Bildschirm und PDF. An Seiten mit Nachbarraum steht die Breite neben der Wand
 Testen: Türen in beide Richtungen setzen, Fenster setzen, Maße prüfen.
 Abhängigkeiten: 1d. Größe: mittel. Ort: Cloud.
 
@@ -257,7 +257,8 @@ Abhängigkeiten: 2b. Größe: mittel. Ort: Mini-PC.
 
 ### 3b Hochladen mit Warteschlange, Weitergabe an n8n
 Ziel: Skizzen kommen zuverlässig auf dem Server und bei n8n an.
-- [ ] Knopf "Hochladen": Version anlegen, PDF erzeugen, Auftrag in Warteschlange
+- [ ] Knopf "Hochladen": Version anlegen, PDF und Vorschaubild (PNG der Zeichnung) erzeugen, Auftrag in Warteschlange (Wunsch des Nutzers: PDF und Bild)
+- [ ] Notizfeld (Vermerke) pro Skizze, geht mit an Twenty; weitere Felder nach Bedarf des Nutzers
 - [ ] Warteschlange nach Abschnitt 3.4, Anzeige des Stands
 - [ ] Server speichert Skizze, Versionen, PDF; erkennt doppelte Aufträge
 - [ ] Server sendet an n8n-Webhook mit Wiederholung
@@ -342,6 +343,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 8. Entscheidungen aus Abschnitt 2 nicht ändern, ohne den Nutzer zu fragen.
 
 ## 8. Notizen für später
+
+- **Transport nach Twenty (Wunsch des Nutzers, Etappe 3):** Erst banal im Gerät speichern (ist gebaut), danach per n8n senden. Gesendet werden: PDF, Vorschaubild (PNG), Quelldatei (JSON), Kundenname, Adresse, Kundennummer, Notizen (Vermerke), Skizzenname, Datum, Anzahl Räume, Gesamtfläche, Maßstab. Welche Felder Twenty wirklich braucht, legt der Nutzer fest; bis dahin gelten diese.
 
 - **Stand Ende des ersten Tages:** 1a bis 1d (Kern) fertig. Die App läuft auf dem Mini-PC des Nutzers (Docker, Tailscale) und auf dem Tablet. Zwei Finger verschieben dort, Rückmeldung: "funktioniert Bombe". Stift noch nicht ausprobiert.
 - **Rückmeldung des Nutzers, noch offen:**

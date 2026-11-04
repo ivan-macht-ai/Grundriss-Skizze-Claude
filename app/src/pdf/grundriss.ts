@@ -4,7 +4,8 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf
 import { schwerpunkt, flaeche } from '../geometrie/polygon';
 import { dist, umgrenzung, type P } from '../geometrie/vec';
 import type { Oeffnung, Raum } from '../modell/typen';
-import { kante } from '../modell/oeffnungen';
+import { kante, type Kante } from '../modell/oeffnungen';
+import { kettenPunkte, laengstesFreiesStueck, zeigeCm } from '../modell/masse';
 import { dickenVon, nachbarSeiten, waendeUmriss } from '../modell/waende';
 import { MM_ZU_PUNKT, seitenGroesse } from './blatt';
 
@@ -148,6 +149,7 @@ function zeichneRaum(w: Werkzeug, raum: Raum, andere: Raum[]): void {
   const anzahl = raum.ecken.length;
   const minD = mm(1.6);
   const welt = (p: P) => l.pt(p.x, p.y);
+  const nachbarn = new Set(nachbarSeiten(raum, andere, 0.7).map((f) => f.kante));
 
   // Wände und Raumlinie: je Seite innen und außen, in den Öffnungen unterbrochen
   for (let i = 0; i < anzahl; i++) {
@@ -164,7 +166,7 @@ function zeichneRaum(w: Werkzeug, raum: Raum, andere: Raum[]): void {
       // Abschluss der Wand an den Enden der Seite
       linie(w, punkt(0, 0), welt(aussen[i]), 0.5);
     }
-    for (const o of oeff) zeichneOeffnung(w, raum, o, d, minD, mm);
+    for (const o of oeff) zeichneOeffnung(w, raum, o, d, minD, mm, nachbarn.has(i));
   }
 
   // Name und Fläche
@@ -173,40 +175,75 @@ function zeichneRaum(w: Werkzeug, raum: Raum, andere: Raum[]): void {
   textMitte(w, sicher(w.fett, raum.name, 120), m.x, m.y + 4, 10, true);
   textMitte(w, `${komma(flaeche(raum.ecken))} m²`, m.x, m.y - 6, 8, false, GRAU);
 
-  // Maße (Innenlängen) außerhalb der Wand; an Seiten mit Nachbarraum keine, dort würden sie sich überlagern
-  const nachbarn = new Set(nachbarSeiten(raum, andere, 0.7).map((f) => f.kante));
+  // Wanddicke in Zentimetern, in der Wand (auf dem längsten Stück ohne Öffnung)
   for (let i = 0; i < anzahl; i++) {
     const k = kante(raum, i);
-    if (nachbarn.has(i) || k.laenge * 1000 / n < 8) continue; // zu kurz auf dem Papier (unter 8 mm)
     const d = dicken[i];
-    // Trägt die Seite Türen oder Fenster, steht dort deren Breite neben der Wand: Maßlinie weiter nach außen
-    const traegtOeffnung = (raum.oeffnungen ?? []).some((o) => o.kante === i);
-    const D = d + mm(8 + (traegtOeffnung ? Math.abs(k.nx) * 7 + Math.abs(k.ny) * 2.5 : 0));
-    const P2 = (t: number, s: number): P => w.l.pt(k.a.x + k.dx * t + k.nx * s, k.a.y + k.dy * t + k.ny * s);
-    linie(w, P2(0, d + mm(1.2)), P2(0, D + mm(1.2)), 0.25, GRAU);
-    linie(w, P2(k.laenge, d + mm(1.2)), P2(k.laenge, D + mm(1.2)), 0.25, GRAU);
-    linie(w, P2(0, D), P2(k.laenge, D), 0.25, GRAU);
-    // Endstriche
-    for (const t of [0, k.laenge]) {
-      const mitte = { x: k.a.x + k.dx * t + k.nx * D, y: k.a.y + k.dy * t + k.ny * D };
-      const e = mm(1.2);
-      linie(
-        w,
-        l.pt(mitte.x - (k.dx + k.nx) * e, mitte.y - (k.dy + k.ny) * e),
-        l.pt(mitte.x + (k.dx + k.nx) * e, mitte.y + (k.dy + k.ny) * e),
-        0.35,
-        GRAU,
-      );
+    if (d <= 0.0005 || (Math.abs(k.dx) > 1e-9 && Math.abs(k.dy) > 1e-9)) continue;
+    const stueck = laengstesFreiesStueck(raum, i, 0.4);
+    if (!stueck) continue;
+    const text = zeigeCm(d);
+    const bandPt = d * l.skala;
+    const tb = w.font.widthOfTextAtSize(text, 5.5);
+    const senkrecht = Math.abs(k.nx) > 0.7;
+    if (senkrecht ? tb + 1.5 > bandPt : bandPt < 5.5 * 0.9) continue; // passt nicht in die Wand
+    const t = (stueck.t0 + stueck.t1) / 2;
+    const q = l.pt(k.a.x + k.dx * t + k.nx * (d / 2), k.a.y + k.dy * t + k.ny * (d / 2));
+    textMitte(w, text, q.x, q.y, 5.5, false, GRAU);
+  }
+
+  // Maße (Innenlängen) außerhalb der Wand. Seiten mit Türen oder Fenstern bekommen eine Maßkette
+  // (Abstand, Breite, Abstand) und darunter das Gesamtmaß. An Seiten mit Nachbarraum keine Maße.
+  for (let i = 0; i < anzahl; i++) {
+    const k = kante(raum, i);
+    if (nachbarn.has(i) || (k.laenge * 1000) / n < 8) continue; // zu kurz auf dem Papier (unter 8 mm)
+    const d = dicken[i];
+    const D1 = d + mm(8);
+    const punkte = kettenPunkte(raum, i);
+    if (punkte.length > 2) {
+      const beschriftung = (q: number, teil: number) => komma(teil, q % 2 === 0 ? 2 : 3);
+      const maxMm = Math.max(...punkte.slice(1).map((p, q) => w.font.widthOfTextAtSize(beschriftung(q, p - punkte[q]), 6.5) / MM_ZU_PUNKT));
+      masskette(w, k, d, punkte, D1, mm, beschriftung, 6.5, false);
+      masskette(w, k, d, [0, k.laenge], D1 + mm(6 + Math.abs(k.nx) * maxMm), mm, (_q, teil) => komma(teil), 7, true);
+    } else {
+      masskette(w, k, d, [0, k.laenge], D1, mm, (_q, teil) => komma(teil), 7, true);
     }
-    const text = komma(k.laenge);
-    const tb = w.font.widthOfTextAtSize(text, 7);
-    const halb = (tb / 2) * Math.abs(k.nx) + 3 * Math.abs(k.ny);
-    const mitteP = P2(k.laenge / 2, D);
-    textMitte(w, text, mitteP.x + k.nx * (3 + halb), mitteP.y + k.ny * (3 + halb), 7);
   }
 }
 
-function zeichneOeffnung(w: Werkzeug, raum: Raum, o: Oeffnung, d: number, minD: number, mm: (v: number) => number): void {
+/** Eine Maßlinie parallel zur Seite mit Hilfslinien, Endstrichen und Zahlen für jedes Teilstück. */
+function masskette(
+  w: Werkzeug,
+  k: Kante,
+  d: number,
+  positionen: number[],
+  D: number,
+  mm: (v: number) => number,
+  text: (index: number, teil: number) => string,
+  groesse: number,
+  immerBeschriften: boolean,
+): void {
+  const { l } = w;
+  const P2 = (t: number, s: number): P => l.pt(k.a.x + k.dx * t + k.nx * s, k.a.y + k.dy * t + k.ny * s);
+  linie(w, P2(positionen[0], D), P2(positionen[positionen.length - 1], D), 0.25, GRAU);
+  for (const t of positionen) {
+    linie(w, P2(t, d + mm(1.2)), P2(t, D + mm(1.2)), 0.25, GRAU);
+    const e = mm(1.2);
+    const m = { x: k.a.x + k.dx * t + k.nx * D, y: k.a.y + k.dy * t + k.ny * D };
+    linie(w, l.pt(m.x - (k.dx + k.nx) * e, m.y - (k.dy + k.ny) * e), l.pt(m.x + (k.dx + k.nx) * e, m.y + (k.dy + k.ny) * e), 0.35, GRAU);
+  }
+  for (let q = 0; q < positionen.length - 1; q++) {
+    const teil = positionen[q + 1] - positionen[q];
+    const beschriftung = text(q, teil);
+    const tb = w.font.widthOfTextAtSize(beschriftung, groesse);
+    if (!immerBeschriften && (teil * l.skala) < tb + 3) continue; // Teilstück zu kurz für die Zahl
+    const halb = (tb / 2) * Math.abs(k.nx) + (groesse * 0.45) * Math.abs(k.ny);
+    const mitte = P2((positionen[q] + positionen[q + 1]) / 2, D);
+    textMitte(w, beschriftung, mitte.x + k.nx * (3 + halb), mitte.y + k.ny * (3 + halb), groesse);
+  }
+}
+
+function zeichneOeffnung(w: Werkzeug, raum: Raum, o: Oeffnung, d: number, minD: number, mm: (v: number) => number, mitBreitenzahl: boolean): void {
   const { l } = w;
   const k = kante(raum, o.kante);
   const innen = d >= minD ? 0 : -minD / 2;
@@ -247,7 +284,8 @@ function zeichneOeffnung(w: Werkzeug, raum: Raum, o: Oeffnung, d: number, minD: 
     linie(w, l.pt(h.x, h.y), l.pt(spitze.x, spitze.y), 0.6);
   }
 
-  // Breite in Metern, außen neben der Wand
+  // Breite in Metern, außen neben der Wand: nur dort, wo keine Maßkette steht (Seite mit Nachbarraum)
+  if (!mitBreitenzahl) return;
   const text = komma(o.breite, 3);
   const tb = w.font.widthOfTextAtSize(text, 6);
   const halb = (tb / 2) * Math.abs(k.nx) + 2.5 * Math.abs(k.ny);

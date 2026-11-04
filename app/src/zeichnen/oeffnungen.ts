@@ -20,6 +20,7 @@ export function zeichneOeffnungen(
   raum: Raum,
   farben: OeffnungsFarben,
   gewaehlteId: number | null,
+  kantenMitBreitenzahl: Set<number> = new Set(),
 ): void {
   const dicken = dickenVon(raum);
   for (const o of raum.oeffnungen ?? []) {
@@ -102,7 +103,8 @@ export function zeichneOeffnungen(
       ctx.stroke();
     }
 
-    // Breite in Metern, außen neben der Wand. Ein Hintergrund hält die Zahl lesbar, wenn sie eine Maßlinie kreuzt.
+    // Breite in Metern, außen neben der Wand: nur dort, wo keine Maßkette steht (Seite mit Nachbarraum)
+    if (!kantenMitBreitenzahl.has(o.kante)) continue;
     const text = kommaZahl(o.breite, 3);
     ctx.font = '11px system-ui, sans-serif';
     const halb = (ctx.measureText(text).width / 2) * Math.abs(k.nx) + 6 * Math.abs(k.ny);
