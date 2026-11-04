@@ -12,7 +12,28 @@ Stand: Entwurf, noch nichts davon ist gebaut. Zweck: Die App-Seite (diese Entwic
 4. Der Server prüft, speichert und gibt alles an **n8n** weiter. n8n legt es bei Twenty ab.
 5. Die App hat nie einen Schlüssel für Twenty. Der Zugang zu Twenty liegt nur auf dem Server.
 
-## Anfrage der App
+## Kunden holen (Richtung CRM -> App)
+
+`GET <server-adresse>/api/kunden?marke=Angebot,Besuch` mit demselben `Authorization`-Header.
+
+- `marke` ist optional und kann mehrere Marken (Etiketten/Tags in Twenty) enthalten, durch Komma getrennt. Geliefert werden Kunden,
+  die mindestens eine dieser Marken tragen. Ohne `marke`: alle Kunden, die der Server freigibt.
+- Antwort `200` mit `{"ok": true, "kunden": [ ... ]}`. Jeder Eintrag:
+
+| Feld | Typ | Inhalt |
+|---|---|---|
+| `crm_id` | Text | Feste ID des Datensatzes in Twenty. Der Schlüssel für alles Weitere. |
+| `name` | Text | Anzeigename des Kunden. |
+| `adresse` | Text | Eine Zeile, zum Beispiel `Gartenweg 5, 80331 München`. Leer, wenn unbekannt. |
+| `nummer` | Text | Kundennummer, **falls Twenty ein Feld dafür hat**, sonst leer. Die App zeigt dann nur die `crm_id`. |
+| `marken` | Liste von Text | Alle Marken des Kunden. |
+
+- Die App speichert die Liste im Gerät (Zeitpunkt des Abrufs wird angezeigt), damit man Kunden auch ohne Netz auswählen kann.
+  Der Abruf passiert, wenn der Nutzer "Kunden aktualisieren" tippt, zum Beispiel beim Kunden mit Netz.
+- Wählt der Nutzer einen Kunden, füllt die App Name, Adresse, Kundennummer und merkt sich `crm_id` in der Skizze.
+  Tippen von Hand bleibt möglich (Kunde nicht in der Liste, kein Netz).
+
+## Anfrage der App (Skizze senden)
 
 `POST <server-adresse>/api/skizzen` als `multipart/form-data`, Header `Authorization: Bearer <geheimwort>`
 (Geheimwort kommt später mit der Anmeldung; bis dahin nur im Heimnetz oder Tailscale erreichbar).
@@ -25,7 +46,8 @@ Stand: Entwurf, noch nichts davon ist gebaut. Zweck: Die App-Seite (diese Entwic
 | `skizzen_name` | Text | Name der Skizze. |
 | `kunde_name` | Text | Kundenname (kann leer sein). |
 | `kunde_adresse` | Text | Adresse (kann leer sein). |
-| `kunde_nummer` | Text | Kundennummer (kann leer sein; später Twenty-ID). |
+| `kunde_nummer` | Text | Kundennummer (kann leer sein). |
+| `kunde_crm_id` | Text | `crm_id` aus der Kundenliste, wenn der Kunde dort ausgewählt wurde, sonst leer. Daran legt der Server die Skizze beim richtigen Kunden ab. |
 | `notizen` | Text | Vermerke zur Skizze (kann leer sein). |
 | `datum` | Text | Zeitpunkt des Sendens, ISO 8601. |
 | `anzahl_raeume` | Zahl | Zur Anzeige im CRM. |
@@ -53,13 +75,18 @@ Größenbegrenzung: die Anfrage insgesamt bis 20 MB, je Datei bis 10 MB. Fotos k
 - Größen eingehalten.
 - Nur nach erfolgreicher Prüfung wird an n8n weitergegeben.
 
-## Offene Entscheidungen (Ivan)
+## Entscheidungen (Ivan, 4.11.2026)
 
-1. Wo soll die Skizze im CRM liegen: bei den Personen/Firmen in Twenty, bei den Projekten im Handwerker-Programm, oder zuerst in Twenty und später im Programm?
-2. Reicht für den Anfang nur die Richtung "Skizze ins CRM"? Die Kundenliste aus Twenty (Kunde auswählen statt tippen) kommt dann später.
-3. Welche weiteren Felder braucht das CRM wirklich? (Vermerke, Termin, Ansprechpartner ...)
+1. Die Skizze liegt in **Twenty beim Kunden**.
+2. Der Weg geht in **beide Richtungen**: Kunden mit einer Marke (zum Beispiel "Angebot" oder "Besuch") werden aus Twenty geholt und in der App
+   ausgewählt; die Skizze geht danach an diesen Kunden zurück.
+3. Gebraucht werden **Name, Adresse, Kundennummer**. Ein Feld für die Kundennummer gibt es in Twenty vielleicht nicht: dann zählt die `crm_id`.
+   Weitere Felder: Notizen (Vermerke). Mehr nach Bedarf.
+
+Noch zu klären (Server-Seite): Ist "Kunde" in Twenty eine Person oder eine Firma? Wie heißen die Marken, und wo stehen sie (Tags, Auswahlfeld)?
+Wohin genau kommt die Datei (Anhang am Datensatz, Notiz mit Anhang)?
 
 ## Aufteilung
 
-- **App-Seite:** Notizfeld, Knopf "Senden", PDF und Vorschaubild erzeugen, Warteschlange im Gerät, Anzeige "wartet / gesendet / Fehler".
-- **Server-Seite:** Empfangsstelle `/api/skizzen`, Prüfung, Weitergabe an n8n, Ablage bei Twenty. Der Zugang zu Twenty bleibt auf dem Server.
+- **App-Seite:** Notizfeld, Knopf "Senden", PDF und Vorschaubild erzeugen, Warteschlange im Gerät, Anzeige "wartet / gesendet / Fehler", Kundenliste holen, zwischenspeichern und auswählen.
+- **Server-Seite:** `GET /api/kunden` (Kundenliste aus Twenty nach Marke), `POST /api/skizzen` (Prüfung, Weitergabe an n8n, Ablage bei Twenty). Der Zugang zu Twenty bleibt auf dem Server.
