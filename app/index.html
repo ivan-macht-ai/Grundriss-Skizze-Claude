@@ -23,6 +23,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 4v6 M9 14v6"/></svg>
         <span>Einstellungen</span>
       </button>
+      <button id="btn-senden" type="button" aria-label="Skizze an das CRM senden">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5 M6 11l6-6 6 6 M5 21h14"/></svg>
+        <span id="senden-text">Senden</span>
+      </button>
       <button id="btn-pdf" type="button" class="haupt">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z M14 3v5h5 M9 13h6 M9 17h6"/></svg>
         <span>PDF</span>
@@ -125,7 +129,18 @@
           <div class="feld"><label for="skizze-adresse">Adresse</label><input id="skizze-adresse" type="text" autocomplete="off" maxlength="200" /></div>
           <div class="feld"><label for="skizze-nummer">Kundennummer</label><input id="skizze-nummer" type="text" autocomplete="off" maxlength="80" /></div>
           <div class="dialog-knoepfe">
+            <button id="kunde-waehlen" type="button">Kunde aus dem CRM wählen</button>
+          </div>
+          <p id="crm-hinweis" class="hilfe"></p>
+          <div class="feld"><label for="skizze-notizen">Notizen (Vermerke)</label><textarea id="skizze-notizen" rows="3" maxlength="4000"></textarea></div>
+          <div class="dialog-knoepfe">
             <button id="skizze-sichern" type="button">Als Datei sichern</button>
+          </div>
+          <h3 class="abschnitt">Warteschlange zum Senden</h3>
+          <p class="hilfe">Gesendet wird, sobald Netz da ist. Bis dahin liegt alles sicher im Gerät.</p>
+          <div id="warteschlange-liste"></div>
+          <div class="dialog-knoepfe">
+            <button id="warte-jetzt" type="button">Jetzt senden</button>
           </div>
           <h3 class="abschnitt">Versionen dieser Skizze</h3>
           <p class="hilfe">Die App merkt sich automatisch einen Stand, wenn du die Skizze schließt, wechselst oder ein PDF erzeugst. Jede Version lässt sich zurückholen. Dabei wird nichts überschrieben: Der heutige Stand wird vorher selbst als Version gesichert.</p>
@@ -142,6 +157,23 @@
           <p id="skizzen-meldung" class="hilfe" role="status"></p>
           <div id="skizzen-liste"></div>
           <p id="speicher-info" class="hilfe"></p>
+        </div>
+      </div>
+    </div>
+
+    <div id="kunden-dialog" class="dialog" hidden>
+      <div class="dialog-tafel breit" role="dialog" aria-modal="true" aria-labelledby="kunden-titel">
+        <div class="dialog-kopf">
+          <strong id="kunden-titel">Kunde aus dem CRM wählen</strong>
+          <button id="kunden-zu" type="button">Schließen</button>
+        </div>
+        <div class="dialog-inhalt">
+          <div class="feld"><label for="kunden-suche">Suchen</label><input id="kunden-suche" type="text" autocomplete="off" placeholder="Name, Adresse oder Nummer" /></div>
+          <div class="dialog-knoepfe">
+            <button id="kunden-holen" type="button" class="haupt">Kunden aktualisieren</button>
+          </div>
+          <p id="kunden-status" class="hilfe" role="status"></p>
+          <div id="kunden-liste"></div>
         </div>
       </div>
     </div>
@@ -240,6 +272,11 @@
         <div class="dialog-inhalt">
           <p class="hilfe">Die App macht aus einem groben Strich einen sauberen Raum. Hier stellst du ein, wie großzügig sie dabei ist. Änderungen gelten sofort für den nächsten Strich.</p>
           <div id="regler"></div>
+          <h3 class="abschnitt">Server (für Kunden und Senden)</h3>
+          <div class="feld"><label for="server-adresse">Adresse des Servers</label><input id="server-adresse" type="text" inputmode="url" autocomplete="off" placeholder="https://..." /></div>
+          <div class="feld"><label for="server-geheimwort">Geheimwort (falls eingerichtet)</label><input id="server-geheimwort" type="password" autocomplete="off" /></div>
+          <div class="feld"><label for="server-marken">Marken der Kunden, die geholt werden</label><input id="server-marken" type="text" autocomplete="off" placeholder="Angebot, Besuch" /></div>
+          <p class="hilfe">Adresse und Geheimwort bleiben nur in diesem Gerät. Der Zugang zum CRM selbst liegt nie in der App.</p>
           <div class="dialog-knoepfe">
             <button id="toleranz-standard" type="button">Erkennung auf Standard</button>
             <button id="leisten-standard" type="button">Leisten an Ausgangsplatz</button>

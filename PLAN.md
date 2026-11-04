@@ -14,8 +14,8 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 - [x] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück (vom Nutzer auf dem Tablet zu testen)
 - [x] 2b Versionen mit Vorschaubild (vom Nutzer auf dem Tablet zu testen)
 - [ ] 3a Server im Docker-Container auf dem Mini-PC
-- [ ] 3b Hochladen mit Warteschlange, Weitergabe an n8n
-- [ ] 3c Kundenliste über n8n, Zuordnung
+- [ ] 3b Hochladen mit Warteschlange, Weitergabe an n8n (App-Seite fertig und mit Dummy-Server getestet; Server-Seite offen)
+- [ ] 3c Kundenliste über n8n, Zuordnung (App-Seite fertig: Kunden nach Marke holen, im Gerät speichern, suchen, auswählen; Server-Seite offen)
 - [ ] 4a Symbole
 - [ ] 4b Fotos
 - [ ] 5 Anbindung an Twenty, Umzug auf Hostinger, Feinschliff
@@ -257,8 +257,8 @@ Abhängigkeiten: 2b. Größe: mittel. Ort: Mini-PC.
 
 ### 3b Hochladen mit Warteschlange, Weitergabe an n8n
 Ziel: Skizzen kommen zuverlässig auf dem Server und bei n8n an.
-- [ ] Knopf "Hochladen": Version anlegen, PDF und Vorschaubild (PNG der Zeichnung) erzeugen, Auftrag in Warteschlange (Wunsch des Nutzers: PDF und Bild)
-- [ ] Notizfeld (Vermerke) pro Skizze, geht mit an Twenty; weitere Felder nach Bedarf des Nutzers
+- [x] Knopf "Senden": Version anlegen, PDF und Vorschaubild (PNG der Zeichnung) erzeugen, Auftrag in Warteschlange (Wunsch des Nutzers: PDF und Bild)
+- [x] Notizfeld (Vermerke) pro Skizze, geht mit an Twenty; weitere Felder nach Bedarf des Nutzers
 - [ ] Warteschlange nach Abschnitt 3.4, Anzeige des Stands
 - [ ] Server speichert Skizze, Versionen, PDF; erkennt doppelte Aufträge
 - [ ] Server sendet an n8n-Webhook mit Wiederholung

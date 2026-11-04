@@ -52,6 +52,6 @@ describe('Versionen', () => {
   });
 
   it('jeder Grund hat einen Text', () => {
-    for (const g of ['schliessen', 'wechsel', 'pdf', 'manuell', 'vor-wiederherstellung'] as const) expect(grundText(g).length).toBeGreaterThan(3);
+    for (const g of ['schliessen', 'wechsel', 'pdf', 'senden', 'manuell', 'vor-wiederherstellung'] as const) expect(grundText(g).length).toBeGreaterThan(3);
   });
 });

@@ -1,6 +1,6 @@
 # Schnittstelle App <-> Server <-> Twenty (Entwurf)
 
-Stand: Entwurf, noch nichts davon ist gebaut. Zweck: Die App-Seite (diese Entwicklung) und die Server-Seite
+Stand: Die App-Seite ist gebaut und gegen einen Dummy-Server getestet (4.11.2026). Die Server-Seite fehlt noch. Zweck: Die App-Seite (diese Entwicklung) und die Server-Seite
 (Heimserver, n8n, Twenty) sollen dasselbe meinen. Änderungen nur gemeinsam mit Ivan.
 
 ## Ablauf
@@ -11,6 +11,16 @@ Stand: Entwurf, noch nichts davon ist gebaut. Zweck: Die App-Seite (diese Entwic
    nacheinander an den Server. Erst nach der Antwort `200` gilt ein Auftrag als gesendet, sonst wird er später erneut versucht.
 4. Der Server prüft, speichert und gibt alles an **n8n** weiter. n8n legt es bei Twenty ab.
 5. Die App hat nie einen Schlüssel für Twenty. Der Zugang zu Twenty liegt nur auf dem Server.
+
+## Erreichbarkeit (wichtig für den Server)
+
+- Die App ruft die Server-Adresse aus ihren Einstellungen auf. Sie läuft selbst über **https** (Tailscale). Der Server muss deshalb ebenfalls
+  **https** sprechen, sonst blockiert der Browser die Anfrage ("gemischte Inhalte").
+- Am einfachsten ist **dieselbe Adresse wie die App**: der nginx-Container leitet `/api/` an den kleinen Server weiter. Dann gibt es keine
+  Browser-Sperre zwischen verschiedenen Adressen (CORS).
+- Liegt der Server unter einer anderen Adresse, muss er CORS erlauben: `Access-Control-Allow-Origin: <Adresse der App>`,
+  `Access-Control-Allow-Headers: Authorization, Content-Type`, `Access-Control-Allow-Methods: GET, POST, OPTIONS`, und `OPTIONS`-Anfragen mit `204` beantworten.
+- In der App steht die Adresse unter Einstellungen > Server, zum Beispiel `https://ivanserver.tail149f79.ts.net:5443` (ohne `/api` am Ende).
 
 ## Kunden holen (Richtung CRM -> App)
 

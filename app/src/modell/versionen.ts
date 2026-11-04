@@ -3,7 +3,7 @@ import type { Kunde } from '../pdf/grundriss';
 import { neueId, pruefeSkizze, type Skizze } from './skizze';
 import type { Raum } from './typen';
 
-export type Grund = 'schliessen' | 'wechsel' | 'pdf' | 'manuell' | 'vor-wiederherstellung';
+export type Grund = 'schliessen' | 'wechsel' | 'pdf' | 'senden' | 'manuell' | 'vor-wiederherstellung';
 
 export interface Version {
   id: string;
@@ -18,13 +18,14 @@ export interface Version {
 
 export const MAX_AUTOMATISCHE_VERSIONEN = 30;
 
-const GRUENDE: Grund[] = ['schliessen', 'wechsel', 'pdf', 'manuell', 'vor-wiederherstellung'];
+const GRUENDE: Grund[] = ['schliessen', 'wechsel', 'pdf', 'senden', 'manuell', 'vor-wiederherstellung'];
 
 export function grundText(g: Grund): string {
   switch (g) {
     case 'schliessen': return 'beim Schließen';
     case 'wechsel': return 'beim Wechseln';
     case 'pdf': return 'beim PDF';
+    case 'senden': return 'beim Senden';
     case 'manuell': return 'von Hand gespeichert';
     case 'vor-wiederherstellung': return 'vor dem Zurückholen';
   }

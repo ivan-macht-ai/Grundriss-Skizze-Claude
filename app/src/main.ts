@@ -15,10 +15,12 @@ import { leseBreite, leseLaenge, zeigeLaenge } from './modell/zahlen';
 import { macheVerschiebbar } from './oberflaeche/verschiebbar';
 import { erzeugeGrundrissPdf, huelle, type Kunde } from './pdf/grundriss';
 import { leseSkizzenDatei, neueId, neueSkizze, skizzeZuDatei, type Skizze } from './modell/skizze';
-import { alleSkizzen, bitteUmDauerhaftenSpeicher, ladeSkizze, loescheSkizze, loescheVersionen, speichereSkizze, speichereVersion, versionenVon } from './speicher/idb';
+import { alleSkizzen, bitteUmDauerhaftenSpeicher, ladeSkizze, loescheSkizze, loescheVersionen, speichereSkizze, speichereVersion, versionenVon, warteschlange } from './speicher/idb';
 import { grundText, inhaltsStempel, neueVersion, zuLoeschen, type Grund, type Version } from './modell/versionen';
 import { vorschauSvg } from './zeichnen/vorschau';
-import { ladeJson, ladeToleranzen, speichereJson, speichereToleranzen } from './speicher/einstellungen';
+import { ladeJson, ladeKundenCache, ladeServer, ladeToleranzen, speichereJson, speichereKundenCache, speichereServer, speichereToleranzen } from './speicher/einstellungen';
+import { arbeiteAb, holeKunden, normalisiereAdresse, suche, type Auftrag } from './senden/client';
+import { erzeugeVorschauBild } from './zeichnen/bild';
 import { kommaZahl, zeichneRaeume } from './zeichnen/raeume';
 
 const canvas = document.getElementById('flaeche') as HTMLCanvasElement;
@@ -41,6 +43,7 @@ let skizze: Skizze = neueSkizze();
 let speicherStatus = '';
 let speicherZeit: number | undefined;
 let speicherOffen = false;
+let warteAnzahl = 0;
 let versionsStempel = ''; // Inhalt, der zuletzt als Version gesichert wurde
 let auswahlId: number | null = null;
 let auswahlOeffnung: OeffnungsRef | null = null;
@@ -173,7 +176,7 @@ function aktualisiere(): void {
   const art: Record<string, string> = { pen: 'Stift', touch: 'Finger', mouse: 'Maus', '–': '–' };
   statusZeile.textContent =
     `Zeiger: ${pos}   |   Eingabe: ${art[zustand.letzteArt] ?? zustand.letzteArt}` +
-    `   |   ${speicherStatus || 'Noch nichts zu speichern'}   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Berührungen: ${zustand.beruehrungen}   |   Vom Browser abgebrochen: ${zustand.abgebrochen}   |   Rad: ${zustand.radAnzahl} (${zustand.radLetzte})   |   Räume: ${raeume.length}`;
+    `   |   ${speicherStatus || 'Noch nichts zu speichern'}   |   Handballen ignoriert: ${zustand.handballenIgnoriert}   |   Berührungen: ${zustand.beruehrungen}   |   Vom Browser abgebrochen: ${zustand.abgebrochen}   |   Rad: ${zustand.radAnzahl} (${zustand.radLetzte})   |   Räume: ${raeume.length}${warteAnzahl > 0 ? `   |   Warteschlange: ${warteAnzahl}` : ''}`;
   btnZurueck.disabled = verlaufPos === 0;
   btnVor.disabled = verlaufPos >= verlauf.length - 1;
   btnLoeschen.disabled = raeume.length === 0;
@@ -706,10 +709,22 @@ function baueRegler(): void {
   }
 }
 btn('btn-einstellungen').addEventListener('click', () => {
+  (document.getElementById('server-adresse') as HTMLInputElement).value = serverEinst.adresse;
+  (document.getElementById('server-geheimwort') as HTMLInputElement).value = serverEinst.geheimwort;
+  (document.getElementById('server-marken') as HTMLInputElement).value = serverEinst.marken;
   baueRegler();
   dialog.hidden = false;
 });
-btn('einstellungen-zu').addEventListener('click', () => (dialog.hidden = true));
+btn('einstellungen-zu').addEventListener('click', () => {
+  dialog.hidden = true;
+  void arbeiteWarteschlange(false);
+});
+for (const [id, schluessel] of [['server-adresse', 'adresse'], ['server-geheimwort', 'geheimwort'], ['server-marken', 'marken']] as const) {
+  (document.getElementById(id) as HTMLInputElement).addEventListener('input', (e) => {
+    serverEinst = { ...serverEinst, [schluessel]: (e.target as HTMLInputElement).value };
+    speichereServer(serverEinst);
+  });
+}
 btn('toleranz-standard').addEventListener('click', () => {
   toleranzen = { ...STANDARD_TOLERANZEN };
   speichereToleranzen(toleranzen);
@@ -817,6 +832,10 @@ function fuelleSkizzenFelder(): void {
   skKunde.value = skizze.kunde.name;
   skAdresse.value = skizze.kunde.adresse;
   skNummer.value = skizze.kunde.nummer;
+  (document.getElementById('skizze-notizen') as HTMLTextAreaElement).value = skizze.notizen;
+  document.getElementById('crm-hinweis')!.textContent = skizze.kunde.crmId
+    ? `Mit dem CRM verbunden (ID ${skizze.kunde.crmId}). Beim Senden landet die Skizze bei diesem Kunden.`
+    : 'Nicht mit dem CRM verbunden: wähle einen Kunden aus der Liste oder tippe die Daten von Hand ein.';
 }
 
 async function aktualisiereListe(): Promise<void> {
@@ -981,6 +1000,7 @@ async function oeffneSkizzenDialog(): Promise<void> {
           : 'Ob der Browser die Skizzen dauerhaft behält, lässt sich hier nicht feststellen. Sichere wichtige Skizzen als Datei.';
   });
   await aktualisiereVersionen();
+  await aktualisiereWarteschlange();
   await aktualisiereListe();
 }
 
@@ -998,8 +1018,23 @@ skName.addEventListener('blur', () => {
 for (const [feld, schluessel] of [[skKunde, 'name'], [skAdresse, 'adresse'], [skNummer, 'nummer']] as const) {
   feld.addEventListener('input', () => {
     skizze.kunde = { ...skizze.kunde, [schluessel]: feld.value };
+    // Ändert man den Namen von Hand, ist es nicht mehr sicher derselbe Kunde im CRM
+    if (schluessel === 'name' && skizze.kunde.crmId) {
+      const { crmId: _weg, ...ohne } = skizze.kunde;
+      skizze.kunde = ohne;
+      fuelleHinweis();
+    }
     planeSpeichern();
   });
+}
+(document.getElementById('skizze-notizen') as HTMLTextAreaElement).addEventListener('input', (e) => {
+  skizze.notizen = (e.target as HTMLTextAreaElement).value;
+  planeSpeichern();
+});
+function fuelleHinweis(): void {
+  document.getElementById('crm-hinweis')!.textContent = skizze.kunde.crmId
+    ? `Mit dem CRM verbunden (ID ${skizze.kunde.crmId}). Beim Senden landet die Skizze bei diesem Kunden.`
+    : 'Nicht mit dem CRM verbunden: wähle einen Kunden aus der Liste oder tippe die Daten von Hand ein.';
 }
 
 btn('skizze-neu').addEventListener('click', () => {
@@ -1057,6 +1092,7 @@ skDatei.addEventListener('change', () => {
 
 async function starte(): Promise<void> {
   void bitteUmDauerhaftenSpeicher();
+  void aktualisiereWarteschlange().then(() => arbeiteWarteschlange(false));
   const letzte = ladeJson<string>('skizze.letzte');
   if (!letzte) return;
   try {
@@ -1072,6 +1108,221 @@ async function starte(): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------- Senden und Kunden aus dem CRM
+let serverEinst = ladeServer();
+let sendeLaeuft = false;
+const sendenText = document.getElementById('senden-text')!;
+
+async function aktualisiereWarteschlange(): Promise<void> {
+  let liste: Auftrag[] = [];
+  try {
+    liste = await warteschlange.liste();
+  } catch {
+    liste = [];
+  }
+  warteAnzahl = liste.filter((a) => a.status === 'wartet').length;
+  const mitFehler = liste.filter((a) => a.status === 'fehler').length;
+  sendenText.textContent = warteAnzahl + mitFehler > 0 ? `Senden (${warteAnzahl + mitFehler})` : 'Senden';
+  aktualisiere();
+  const box = document.getElementById('warteschlange-liste')!;
+  box.textContent = '';
+  if (liste.length === 0) {
+    const leer = document.createElement('p');
+    leer.className = 'hilfe';
+    leer.textContent = 'Nichts in der Warteschlange.';
+    box.append(leer);
+    return;
+  }
+  for (const a of liste.sort((x, y) => x.erstellt - y.erstellt)) {
+    const zeile = document.createElement('div');
+    zeile.className = 'warte-zeile';
+    const text = document.createElement('div');
+    text.className = 'text';
+    const titel = document.createElement('strong');
+    titel.textContent = a.felder.skizzen_name || 'Skizze';
+    const unter = document.createElement('span');
+    unter.textContent = `${new Date(a.erstellt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}, ${a.status === 'fehler' ? 'Fehler' : 'wartet'}${a.versuche > 0 ? `, ${a.versuche} Versuch(e)` : ''}`;
+    text.append(titel, unter);
+    if (a.fehler) {
+      const f = document.createElement('span');
+      f.className = 'fehler';
+      f.textContent = a.fehler;
+      text.append(f);
+    }
+    zeile.append(text);
+    if (a.status === 'fehler') {
+      const nochmal = document.createElement('button');
+      nochmal.type = 'button';
+      nochmal.textContent = 'Erneut';
+      nochmal.addEventListener('click', () => {
+        void (async () => {
+          await warteschlange.speichere({ ...a, status: 'wartet', fehler: undefined });
+          await aktualisiereWarteschlange();
+          await arbeiteWarteschlange(true);
+        })();
+      });
+      zeile.append(nochmal);
+    }
+    const weg = document.createElement('button');
+    weg.type = 'button';
+    weg.textContent = 'Verwerfen';
+    weg.addEventListener('click', () => {
+      void (async () => {
+        await warteschlange.entferne(a.id);
+        await aktualisiereWarteschlange();
+      })();
+    });
+    zeile.append(weg);
+    box.append(zeile);
+  }
+}
+
+/** Schickt wartende Aufträge an den Server. Von selbst (beim Start, bei Netz, alle zwei Minuten) und auf Knopfdruck. */
+async function arbeiteWarteschlange(manuell: boolean): Promise<void> {
+  if (sendeLaeuft) return;
+  if (!normalisiereAdresse(serverEinst.adresse)) {
+    if (manuell) zeigeHinweis('Trage die Server-Adresse in den Einstellungen ein, dann wird gesendet.', true);
+    return;
+  }
+  sendeLaeuft = true;
+  try {
+    const bericht = await arbeiteAb(warteschlange, serverEinst);
+    if (bericht.gesendet > 0) zeigeHinweis(`${bericht.gesendet} ${bericht.gesendet === 1 ? 'Skizze' : 'Skizzen'} gesendet.`, false);
+    else if (bericht.meldung && (manuell || bericht.fehler > 0)) zeigeHinweis(bericht.meldung, true);
+    else if (manuell && bericht.offen === 0 && bericht.fehler === 0) zeigeHinweis('Nichts zu senden.', false);
+  } catch {
+    if (manuell) zeigeHinweis('Die Warteschlange konnte nicht gelesen werden.', true);
+  } finally {
+    sendeLaeuft = false;
+    await aktualisiereWarteschlange();
+  }
+}
+
+/** Erzeugt PDF, Vorschaubild und Quelldatei, legt alles als Auftrag in die Warteschlange und versucht zu senden. */
+async function sendeSkizze(): Promise<void> {
+  if (raeume.length === 0) {
+    zeigeHinweis('Zeichne zuerst einen Raum, dann gibt es etwas zu senden.', true);
+    return;
+  }
+  try {
+    zeigeHinweis('Bereite das Senden vor …', false);
+    await speichereJetzt();
+    await erzeugeVersion('senden');
+    const opt = ladeJson<{ quer: boolean; nenner: number | 'auto' }>('skizze.pdfopt') ?? { quer: true, nenner: 'auto' as const };
+    const jetzt = new Date();
+    const pdf = await erzeugeGrundrissPdf(raeume, { quer: opt.quer, nenner: opt.nenner, kunde: skizze.kunde, datum: jetzt.toLocaleDateString('de-DE') });
+    const bild = await erzeugeVorschauBild(raeume);
+    skizze.sendungen += 1;
+    skizze.raeume = raeume;
+    skizze.naechsteId = naechsteId;
+    const gesamt = raeume.reduce((summe, r) => summe + flaeche(r.ecken), 0);
+    const auftrag: Auftrag = {
+      id: neueId(),
+      skizzeId: skizze.id,
+      erstellt: Date.now(),
+      felder: {
+        version: String(skizze.sendungen),
+        skizzen_name: skizze.name,
+        kunde_name: skizze.kunde.name,
+        kunde_adresse: skizze.kunde.adresse,
+        kunde_nummer: skizze.kunde.nummer,
+        kunde_crm_id: skizze.kunde.crmId ?? '',
+        notizen: skizze.notizen,
+        datum: jetzt.toISOString(),
+        anzahl_raeume: String(raeume.length),
+        gesamtflaeche_m2: gesamt.toFixed(2),
+        massstab: `1:${pdf.nenner}`,
+      },
+      pdf: new Blob([pdf.bytes as BlobPart], { type: 'application/pdf' }),
+      bild,
+      quelle: skizzeZuDatei(skizze),
+      status: 'wartet',
+      versuche: 0,
+    };
+    await warteschlange.speichere(auftrag);
+    planeSpeichern();
+    await aktualisiereWarteschlange();
+    zeigeHinweis(normalisiereAdresse(serverEinst.adresse) ? 'In der Warteschlange. Wird gesendet, sobald Netz da ist.' : 'In der Warteschlange. Trage die Server-Adresse in den Einstellungen ein, dann wird gesendet.', false);
+    void arbeiteWarteschlange(false);
+  } catch (fehler) {
+    zeigeHinweis(`Das Senden konnte nicht vorbereitet werden: ${(fehler as Error).message}`, true);
+  }
+}
+
+btn('btn-senden').addEventListener('click', () => void sendeSkizze());
+btn('warte-jetzt').addEventListener('click', () => void arbeiteWarteschlange(true));
+window.addEventListener('online', () => void arbeiteWarteschlange(false));
+window.setInterval(() => void arbeiteWarteschlange(false), 120_000);
+
+// Kunden aus dem CRM
+const kundenDialog = document.getElementById('kunden-dialog')!;
+const kundenSuche = document.getElementById('kunden-suche') as HTMLInputElement;
+const kundenStatus = document.getElementById('kunden-status')!;
+const kundenListe = document.getElementById('kunden-liste')!;
+let kundenCache = ladeKundenCache();
+
+function zeigeKundenListe(): void {
+  kundenListe.textContent = '';
+  if (!kundenCache) {
+    kundenStatus.textContent = 'Noch keine Kundenliste im Gerät. Tippe auf „Kunden aktualisieren“ (dafür brauchst du Netz) oder tippe die Daten von Hand ein.';
+    return;
+  }
+  const treffer = suche(kundenCache.kunden, kundenSuche.value);
+  kundenStatus.textContent = `${kundenCache.kunden.length} Kunden im Gerät, Stand ${new Date(kundenCache.zeit).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}. Marken: ${serverEinst.marken || 'alle'}.${treffer.length < kundenCache.kunden.length ? ` ${treffer.length} Treffer.` : ''}`;
+  for (const k of treffer.slice(0, 100)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'kunden-zeile';
+    const n = document.createElement('strong');
+    n.textContent = k.name;
+    const a = document.createElement('span');
+    a.textContent = [k.adresse, k.nummer ? `Nr. ${k.nummer}` : ''].filter(Boolean).join(', ') || 'keine Adresse';
+    b.append(n, a);
+    if (k.marken.length > 0) {
+      const m = document.createElement('span');
+      m.className = 'marken';
+      m.textContent = k.marken.join(', ');
+      b.append(m);
+    }
+    b.addEventListener('click', () => {
+      skizze.kunde = { name: k.name, adresse: k.adresse, nummer: k.nummer, crmId: k.crmId };
+      fuelleSkizzenFelder();
+      planeSpeichern();
+      kundenDialog.hidden = true;
+      zeigeHinweis(`Kunde „${k.name}“ übernommen.`, false);
+    });
+    kundenListe.append(b);
+  }
+  if (treffer.length > 100) {
+    const mehr = document.createElement('p');
+    mehr.className = 'hilfe';
+    mehr.textContent = 'Es gibt mehr Treffer. Tippe mehr vom Namen, um die Liste zu verkleinern.';
+    kundenListe.append(mehr);
+  }
+}
+
+btn('kunde-waehlen').addEventListener('click', () => {
+  kundenSuche.value = '';
+  kundenDialog.hidden = false;
+  zeigeKundenListe();
+  window.setTimeout(() => kundenSuche.focus(), 50);
+});
+btn('kunden-zu').addEventListener('click', () => (kundenDialog.hidden = true));
+kundenSuche.addEventListener('input', zeigeKundenListe);
+btn('kunden-holen').addEventListener('click', () => {
+  void (async () => {
+    kundenStatus.textContent = 'Hole Kunden …';
+    const erg = await holeKunden(serverEinst);
+    if ('fehler' in erg) {
+      kundenStatus.textContent = erg.fehler;
+      return;
+    }
+    kundenCache = { zeit: Date.now(), kunden: erg.kunden };
+    speichereKundenCache(kundenCache);
+    zeigeKundenListe();
+  })();
+});
+
 // PDF: Kunde, Format und Maßstab wählen, dann erzeugen und anzeigen
 const pdfDialog = document.getElementById('pdf-dialog')!;
 const pdfFehler = document.getElementById('pdf-dialog-fehler')!;
@@ -1086,6 +1337,11 @@ const hinweis = document.getElementById('pdf-hinweis')!;
 let pdfUrl: string | null = null;
 
 btn('btn-pdf').addEventListener('click', () => {
+  const opt = ladeJson<{ quer: boolean; nenner: number | 'auto' }>('skizze.pdfopt');
+  if (opt) {
+    pdfFormat.value = opt.quer ? 'quer' : 'hoch';
+    pdfMassstab.value = String(opt.nenner);
+  }
   kName.value = skizze.kunde.name;
   kAdresse.value = skizze.kunde.adresse;
   kNummer.value = skizze.kunde.nummer;
@@ -1106,6 +1362,7 @@ btn('pdf-erzeugen').addEventListener('click', async () => {
   void speichereJetzt().then(() => erzeugeVersion('pdf'));
   const quer = pdfFormat.value === 'quer';
   const nenner = pdfMassstab.value === 'auto' ? 'auto' : Number(pdfMassstab.value);
+  speichereJson('skizze.pdfopt', { quer, nenner });
   pdfDialog.hidden = true;
   hinweis.textContent = 'PDF wird erzeugt …';
   document.getElementById('pdf-titel')!.textContent = 'PDF wird erzeugt …';

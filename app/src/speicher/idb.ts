@@ -2,21 +2,24 @@
 // Aufrufer fangen Fehler ab und zeigen "Nicht gespeichert".
 import { pruefeSkizze, type Skizze } from '../modell/skizze';
 import { pruefeVersion, type Version } from '../modell/versionen';
+import type { Ablage, Auftrag } from '../senden/client';
 
 const DB_NAME = 'grundriss-skizze';
 const STORE = 'skizzen';
 const VERSIONEN = 'versionen';
+const OUTBOX = 'outbox';
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function oeffne(): Promise<IDBDatabase> {
   if (!dbPromise) {
     dbPromise = new Promise<IDBDatabase>((ok, fehler) => {
       if (typeof indexedDB === 'undefined') return fehler(new Error('IndexedDB nicht verfügbar'));
-      const anfrage = indexedDB.open(DB_NAME, 2);
+      const anfrage = indexedDB.open(DB_NAME, 3);
       anfrage.onupgradeneeded = (e) => {
         const db = anfrage.result;
         if (e.oldVersion < 1) db.createObjectStore(STORE, { keyPath: 'id' });
         if (e.oldVersion < 2) db.createObjectStore(VERSIONEN, { keyPath: 'id' }).createIndex('skizzeId', 'skizzeId');
+        if (e.oldVersion < 3) db.createObjectStore(OUTBOX, { keyPath: 'id' });
       };
       anfrage.onsuccess = () => ok(anfrage.result);
       anfrage.onerror = () => fehler(anfrage.error ?? new Error('Speicher konnte nicht geöffnet werden'));
@@ -100,3 +103,14 @@ export async function bitteUmDauerhaftenSpeicher(): Promise<boolean | null> {
     return null;
   }
 }
+
+/** Warteschlange der Aufträge, die noch an den Server müssen (Blobs liegen direkt im Speicher des Geräts). */
+export const warteschlange: Ablage = {
+  liste: async () => (await anfrage<unknown[]>('readonly', (st) => st.getAll(), OUTBOX)) as Auftrag[],
+  entferne: async (id) => {
+    await anfrage('readwrite', (st) => st.delete(id), OUTBOX);
+  },
+  speichere: async (a) => {
+    await anfrage('readwrite', (st) => st.put(a), OUTBOX);
+  },
+};

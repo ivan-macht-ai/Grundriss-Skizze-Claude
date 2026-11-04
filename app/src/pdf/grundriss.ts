@@ -22,6 +22,8 @@ export interface Kunde {
   name: string;
   adresse: string;
   nummer: string;
+  /** ID des Kunden im CRM (Twenty), wenn er aus der Kundenliste gewählt wurde */
+  crmId?: string;
 }
 
 export interface PdfOptionen {

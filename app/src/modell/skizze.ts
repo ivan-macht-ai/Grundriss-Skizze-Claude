@@ -12,6 +12,10 @@ export interface Skizze {
   kunde: Kunde;
   raeume: Raum[];
   naechsteId: number;
+  /** Vermerke zur Skizze (gehen mit ans CRM) */
+  notizen: string;
+  /** Wie oft diese Skizze schon gesendet wurde */
+  sendungen: number;
   erstellt: number;
   geaendert: number;
 }
@@ -33,6 +37,8 @@ export function neueSkizze(zeit = Date.now()): Skizze {
     kunde: { name: '', adresse: '', nummer: '' },
     raeume: [],
     naechsteId: 1,
+    notizen: '',
+    sendungen: 0,
     erstellt: zeit,
     geaendert: zeit,
   };
@@ -112,9 +118,16 @@ export function pruefeSkizze(daten: unknown, mitHuelle = true): Skizze | string 
   return {
     id: istText(s.id, 80) && s.id ? s.id : neueId(),
     name: istText(s.name, 120) && s.name.trim() ? s.name : standardName(),
-    kunde: { name: istText(k.name, 120) ? k.name : '', adresse: istText(k.adresse, 200) ? k.adresse : '', nummer: istText(k.nummer, 80) ? k.nummer : '' },
+    kunde: {
+      name: istText(k.name, 160) ? k.name : '',
+      adresse: istText(k.adresse, 240) ? k.adresse : '',
+      nummer: istText(k.nummer, 80) ? k.nummer : '',
+      ...(istText(k.crmId, 100) && k.crmId ? { crmId: k.crmId } : {}),
+    },
     raeume,
     naechsteId: istZahl(s.naechsteId) && s.naechsteId > hoechsteId ? Math.floor(s.naechsteId) : hoechsteId + 1,
+    notizen: istText(s.notizen, 4000) ? s.notizen : '',
+    sendungen: istZahl(s.sendungen) && s.sendungen >= 0 ? Math.floor(s.sendungen) : 0,
     erstellt: istZahl(s.erstellt) ? s.erstellt : jetzt,
     geaendert: istZahl(s.geaendert) ? s.geaendert : jetzt,
   };
