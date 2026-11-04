@@ -15,7 +15,8 @@ import { leseBreite, leseLaenge, zeigeLaenge } from './modell/zahlen';
 import { macheVerschiebbar } from './oberflaeche/verschiebbar';
 import { erzeugeGrundrissPdf, huelle, type Kunde } from './pdf/grundriss';
 import { leseSkizzenDatei, neueId, neueSkizze, skizzeZuDatei, type Skizze } from './modell/skizze';
-import { alleSkizzen, bitteUmDauerhaftenSpeicher, ladeSkizze, loescheSkizze, speichereSkizze } from './speicher/idb';
+import { alleSkizzen, bitteUmDauerhaftenSpeicher, ladeSkizze, loescheSkizze, loescheVersionen, speichereSkizze, speichereVersion, versionenVon } from './speicher/idb';
+import { grundText, inhaltsStempel, neueVersion, zuLoeschen, type Grund, type Version } from './modell/versionen';
 import { vorschauSvg } from './zeichnen/vorschau';
 import { ladeJson, ladeToleranzen, speichereJson, speichereToleranzen } from './speicher/einstellungen';
 import { kommaZahl, zeichneRaeume } from './zeichnen/raeume';
@@ -40,6 +41,7 @@ let skizze: Skizze = neueSkizze();
 let speicherStatus = '';
 let speicherZeit: number | undefined;
 let speicherOffen = false;
+let versionsStempel = ''; // Inhalt, der zuletzt als Version gesichert wurde
 let auswahlId: number | null = null;
 let auswahlOeffnung: OeffnungsRef | null = null;
 let naechsteId = 1;
@@ -761,7 +763,8 @@ function planeSpeichern(): void {
 }
 
 function sofortSpeichernFallsOffen(): void {
-  if (speicherOffen) void speichereJetzt();
+  if (speicherOffen) void speichereJetzt().then(() => erzeugeVersion('schliessen'));
+  else void erzeugeVersion('schliessen');
 }
 
 /** Vor dem Wechsel zu einer anderen Skizze: nur speichern, wenn es etwas Ungespeichertes gibt (keine leeren Skizzen anlegen). */
@@ -773,7 +776,27 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') sofortSpeichernFallsOffen();
 });
 
+/** Sichert den heutigen Stand als Version, wenn er sich seit der letzten Version geändert hat (von Hand: immer). */
+async function erzeugeVersion(grund: Grund): Promise<boolean> {
+  skizze.raeume = raeume;
+  skizze.naechsteId = naechsteId;
+  if (raeume.length === 0) return false;
+  const stempel = inhaltsStempel(skizze);
+  if (grund !== 'manuell' && stempel === versionsStempel) return false;
+  try {
+    await speichereVersion(neueVersion(skizze, grund));
+    versionsStempel = stempel;
+    const alle = await versionenVon(skizze.id);
+    const weg = zuLoeschen(alle);
+    if (weg.length > 0) await loescheVersionen(weg);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function oeffneSkizze(s: Skizze): void {
+  versionsStempel = inhaltsStempel(s);
   skizze = s;
   raeume = s.raeume;
   naechsteId = s.naechsteId;
@@ -830,6 +853,7 @@ async function aktualisiereListe(): Promise<void> {
       void (async () => {
         if (s.id !== skizze.id) {
           await speichereFallsOffen();
+          await erzeugeVersion('wechsel');
           const frisch = await ladeSkizze(s.id);
           if (frisch) oeffneSkizze(frisch);
         }
@@ -875,6 +899,75 @@ async function aktualisiereListe(): Promise<void> {
   }
 }
 
+async function aktualisiereVersionen(): Promise<void> {
+  const box = document.getElementById('versionen-liste')!;
+  box.textContent = '';
+  let liste: Version[] = [];
+  try {
+    liste = await versionenVon(skizze.id);
+  } catch {
+    return;
+  }
+  if (liste.length === 0) {
+    const leer = document.createElement('p');
+    leer.className = 'hilfe';
+    leer.textContent = 'Noch keine Version. Sie entstehen, sobald du die Skizze schließt oder ein PDF erzeugst, oder wenn du oben „Version jetzt speichern“ tippst.';
+    box.append(leer);
+    return;
+  }
+  for (const v of liste) {
+    const zeile = document.createElement('div');
+    zeile.className = 'skizzen-zeile';
+    const feld = document.createElement('div');
+    feld.className = 'oeffnen';
+    const text = document.createElement('span');
+    text.className = 'text';
+    const titel = document.createElement('strong');
+    titel.textContent = new Date(v.zeit).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
+    const unter = document.createElement('span');
+    const gesamt = v.raeume.reduce((summe, r) => summe + flaeche(r.ecken), 0);
+    unter.textContent = `${grundText(v.grund)}, ${v.raeume.length} ${v.raeume.length === 1 ? 'Raum' : 'Räume'}, ${kommaZahl(gesamt, 1)} m²`;
+    text.append(titel, unter);
+    feld.append(vorschauSvg(v.raeume), text);
+    const zurueck = document.createElement('button');
+    zurueck.type = 'button';
+    zurueck.className = 'zurueck';
+    zurueck.textContent = 'Zurückholen';
+    zurueck.addEventListener('click', () => void holeVersionZurueck(v));
+    zeile.append(feld, zurueck);
+    box.append(zeile);
+  }
+}
+
+/** Holt eine Version zurück. Der heutige Stand wird vorher selbst als Version gesichert; es geht nichts verloren. */
+async function holeVersionZurueck(v: Version): Promise<void> {
+  await erzeugeVersion('vor-wiederherstellung');
+  raeume = JSON.parse(JSON.stringify(v.raeume)) as Raum[];
+  naechsteId = Math.max(naechsteId, v.naechsteId, ...raeume.map((r) => r.id + 1));
+  auswahlId = null;
+  auswahlOeffnung = null;
+  vp = raeume.length > 0 ? passeAn(huelle(raeume), breite, hoehe) : startAnsicht(breite, hoehe);
+  versionsStempel = inhaltsStempel({ ...skizze, raeume });
+  merke(); // zählt als Schritt: mit Zurück wieder rückgängig zu machen
+  skMeldung.textContent = `Stand vom ${new Date(v.zeit).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })} zurückgeholt. Der Stand davor ist als Version gesichert.`;
+  aktualisiere();
+  plane();
+  await aktualisiereVersionen();
+}
+
+btn('version-speichern').addEventListener('click', () => {
+  void (async () => {
+    if (raeume.length === 0) {
+      skMeldung.textContent = 'Zeichne zuerst einen Raum, dann gibt es etwas zu sichern.';
+      return;
+    }
+    await speichereJetzt();
+    const ok = await erzeugeVersion('manuell');
+    skMeldung.textContent = ok ? 'Version gespeichert.' : 'Die Version konnte nicht gespeichert werden.';
+    await aktualisiereVersionen();
+  })();
+});
+
 async function oeffneSkizzenDialog(): Promise<void> {
   fuelleSkizzenFelder();
   skMeldung.textContent = '';
@@ -887,6 +980,7 @@ async function oeffneSkizzenDialog(): Promise<void> {
           ? 'Achtung: Der Browser darf die Skizzen löschen, wenn das Gerät Platz braucht. Installiere die App auf dem Home-Bildschirm und sichere wichtige Skizzen als Datei.'
           : 'Ob der Browser die Skizzen dauerhaft behält, lässt sich hier nicht feststellen. Sichere wichtige Skizzen als Datei.';
   });
+  await aktualisiereVersionen();
   await aktualisiereListe();
 }
 
@@ -911,6 +1005,7 @@ for (const [feld, schluessel] of [[skKunde, 'name'], [skAdresse, 'adresse'], [sk
 btn('skizze-neu').addEventListener('click', () => {
   void (async () => {
     await speichereFallsOffen();
+    await erzeugeVersion('wechsel');
     oeffneSkizze(neueSkizze());
     skDialog.hidden = true;
     zeigeHinweis('Neue Skizze. Zeichne einen Raum.', false);
@@ -946,6 +1041,7 @@ skDatei.addEventListener('change', () => {
       return;
     }
     await speichereFallsOffen();
+    await erzeugeVersion('wechsel');
     ergebnis.id = neueId(); // nie eine vorhandene Skizze überschreiben
     ergebnis.geaendert = Date.now();
     try {
@@ -1007,6 +1103,7 @@ btn('pdf-erzeugen').addEventListener('click', async () => {
   const kunde: Kunde = { name: kName.value.trim(), adresse: kAdresse.value.trim(), nummer: kNummer.value.trim() };
   skizze.kunde = kunde;
   planeSpeichern();
+  void speichereJetzt().then(() => erzeugeVersion('pdf'));
   const quer = pdfFormat.value === 'quer';
   const nenner = pdfMassstab.value === 'auto' ? 'auto' : Number(pdfMassstab.value);
   pdfDialog.hidden = true;

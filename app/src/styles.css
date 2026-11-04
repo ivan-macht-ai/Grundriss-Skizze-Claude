@@ -629,3 +629,12 @@ svg.vorschau {
   stroke-width: 1.4;
   stroke-linejoin: round;
 }
+
+.skizzen-zeile .zurueck {
+  min-width: 100px;
+  border: 1px solid var(--akzent);
+  border-radius: 12px;
+  background: var(--leiste);
+  color: var(--akzent);
+  font-weight: 600;
+}

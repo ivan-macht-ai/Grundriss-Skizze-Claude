@@ -12,7 +12,7 @@ Ein Häkchen [x] bedeutet: fertig, getestet, gepusht.
 - [x] 1e Türen und Fenster (Kern fertig, Reste siehe Etappe)
 - [x] 1f Fertiges PDF und Offline-Betrieb (PWA) (Kern fertig; Prüfung durch den Nutzer: PDF ausdrucken und nachmessen, offline auf dem iPad)
 - [x] 2a Speichern auf dem Gerät, Skizzenliste, Kundendaten von Hand, Vor/Zurück (vom Nutzer auf dem Tablet zu testen)
-- [ ] 2b Versionen mit Vorschaubild
+- [x] 2b Versionen mit Vorschaubild (vom Nutzer auf dem Tablet zu testen)
 - [ ] 3a Server im Docker-Container auf dem Mini-PC
 - [ ] 3b Hochladen mit Warteschlange, Weitergabe an n8n
 - [ ] 3c Kundenliste über n8n, Zuordnung
@@ -237,10 +237,10 @@ Abhängigkeiten: 1f. Größe: mittel. Ort: Cloud.
 
 ### 2b Versionen mit Vorschaubild
 Ziel: Jeder frühere Stand ist wiederherstellbar.
-- [ ] Automatische Version beim Schließen, Knopf für manuelle Version
-- [ ] Vorschaubild je Version
-- [ ] Versionsliste mit Datum, Grund, Vorschaubild; Wiederherstellen als neue Version
-- [ ] Formatnummer und Umwandlung für ältere Skizzen
+- [x] Automatische Version beim Schließen, Wechseln und PDF-Erzeugen (nur bei Änderung, höchstens 30 automatische je Skizze), Knopf für manuelle Version
+- [x] Vorschaubild je Version
+- [x] Versionsliste mit Datum, Grund, Vorschaubild; Wiederherstellen als neue Version
+- [ ] Formatnummer und Umwandlung für ältere Skizzen (Sicherungsdatei hat Formatkennung und Version 1; Speicher von Version 1 wird beim Öffnen auf 2 aktualisiert; eine Umwandlung alter Skizzen ist erst nötig, wenn sich das Datenformat ändert)
 Testen: Mehrere Versionen erzeugen, eine alte wiederherstellen, prüfen, dass die neueste nicht verloren ist.
 Abhängigkeiten: 2a. Größe: klein bis mittel. Ort: Cloud. Danach ist die App allein nutzbar.
 
@@ -350,7 +350,7 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
   - Beim Auflegen der Finger "pulsiert" etwas auf dem Tablet. Ursache suchen (vermutlich Neuzeichnen oder Statuszeile bei jeder Berührung, oder Hinweistext).
   - Stifteingabe am Tablet testen (Handballen-Filter, Zeichnen, Doppeltippen mit Stift).
 - **Stand nach 1f:** Räume, Wände, Zwischenwände, Türen, Fenster kommen ins PDF (Wände und Öffnungen als Umrisse, nicht gefüllt, damit sie sich gut in CAD einlesen lassen). Der Nutzer wählt Kunde, Format, Maßstab im Dialog PDF.
-- **Nächste Etappe:** 2b (Versionen mit Vorschaubild). Davor: Fehlerliste des Nutzers aus dem Praxistest (echter Raum, PDF ausdrucken und nachmessen, Stift). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße auf dem Bildschirm (Raummaße, Öffnungsbreiten).
+- **Nächste Etappe:** 3a (Server mit Datenbank auf dem Mini-PC). Davor: Fehlerliste des Nutzers aus dem Praxistest (echter Raum, PDF ausdrucken und nachmessen, Stift). Davor die offenen Punkte oben klären, besonders die kollidierenden Maße auf dem Bildschirm (Raummaße, Öffnungsbreiten).
 - Bekannte Grenzen der Erkennung: sehr flache Ellipsen gelten als Sechseck mit Schrägen; Ecken an 45°-Schrägen liegen nicht auf dem 5-cm-Raster (nur achsparallele Kanten).
 - Zwei Finger auf dem Touchpad (Laptop) schicken Mausrad-Ereignisse. Früher wurde senkrechtes Wischen als Zoom gedeutet (Fehler, behoben): Jetzt verschiebt das Mausrad/Touchpad in alle Richtungen, Zoomen mit Spreizen, Strg + Rad oder Zoomknöpfen. Zwei Finger auf dem Touchscreen des Tablets: noch zu testen (Statuszeile zeigt "Vom Browser abgebrochen").
 - Symbole früher als Etappe 4a? Nutzer fragt danach (Symbole im Raum, Maße außen). Entscheidung nach 1c.
