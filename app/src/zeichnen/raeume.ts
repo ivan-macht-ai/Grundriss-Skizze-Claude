@@ -92,7 +92,10 @@ export function zeichneRaeume(
         nx = -nx;
         ny = -ny;
       }
-      const versatz = 20 + dicken[i] * vp.scale;
+      // Trägt die Seite Türen oder Fenster, steht dort deren Breite neben der Wand: Maßlinie weiter nach außen
+      const traegtOeffnung = (raum.oeffnungen ?? []).some((o) => o.kante === i);
+      const platzFuerBreite = traegtOeffnung ? Math.abs(nx) * 40 + Math.abs(ny) * 14 : 0;
+      const versatz = 20 + dicken[i] * vp.scale + platzFuerBreite;
       const ax = a.x + nx * versatz;
       const ay = a.y + ny * versatz;
       const bx = b.x + nx * versatz;

@@ -179,7 +179,9 @@ function zeichneRaum(w: Werkzeug, raum: Raum, andere: Raum[]): void {
     const k = kante(raum, i);
     if (nachbarn.has(i) || k.laenge * 1000 / n < 8) continue; // zu kurz auf dem Papier (unter 8 mm)
     const d = dicken[i];
-    const D = d + mm(8);
+    // Trägt die Seite Türen oder Fenster, steht dort deren Breite neben der Wand: Maßlinie weiter nach außen
+    const traegtOeffnung = (raum.oeffnungen ?? []).some((o) => o.kante === i);
+    const D = d + mm(8 + (traegtOeffnung ? Math.abs(k.nx) * 7 + Math.abs(k.ny) * 2.5 : 0));
     const P2 = (t: number, s: number): P => w.l.pt(k.a.x + k.dx * t + k.nx * s, k.a.y + k.dy * t + k.ny * s);
     linie(w, P2(0, d + mm(1.2)), P2(0, D + mm(1.2)), 0.25, GRAU);
     linie(w, P2(k.laenge, d + mm(1.2)), P2(k.laenge, D + mm(1.2)), 0.25, GRAU);

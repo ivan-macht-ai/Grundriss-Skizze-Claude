@@ -346,7 +346,7 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 - **Stand Ende des ersten Tages:** 1a bis 1d (Kern) fertig. Die App läuft auf dem Mini-PC des Nutzers (Docker, Tailscale) und auf dem Tablet. Zwei Finger verschieben dort, Rückmeldung: "funktioniert Bombe". Stift noch nicht ausprobiert.
 - **Rückmeldung des Nutzers, noch offen:**
   - Wanddicke eintippen: gibt es im Dialog "Raum bearbeiten" (Doppeltippen im Werkzeug Auswählen). Der Nutzer hat vermutlich noch eine ältere Version auf dem Mini-PC. Aktualisieren: `git pull`, dann `cd deploy && docker compose up -d --build`.
-  - Maßlinien überschneiden sich noch: an Nachbarseiten entfallen sie, aber zwischen mehreren Räumen und an Ecken kann es weiter kollidieren. Lösung überlegen (zum Beispiel Maßlinien nur außen am Gesamtumriss, Umschalter innen/außen, Abstand staffeln).
+  - Maßlinien: Seiten mit Öffnungen rücken ihre Maßlinie nach außen, damit die Breitenzahl frei bleibt (Bildschirm und PDF). Nachbarseiten haben keine Maßlinie. Offen: zwischen mehreren Räumen und an Ecken kann es noch kollidieren; Umschalter innen/außen, Hüllmaß.
   - Beim Auflegen der Finger "pulsiert" etwas auf dem Tablet. Ursache suchen (vermutlich Neuzeichnen oder Statuszeile bei jeder Berührung, oder Hinweistext).
   - Stifteingabe am Tablet testen (Handballen-Filter, Zeichnen, Doppeltippen mit Stift).
 - **Stand nach 1f:** Räume, Wände, Zwischenwände, Türen, Fenster kommen ins PDF (Wände und Öffnungen als Umrisse, nicht gefüllt, damit sie sich gut in CAD einlesen lassen). Der Nutzer wählt Kunde, Format, Maßstab im Dialog PDF.
