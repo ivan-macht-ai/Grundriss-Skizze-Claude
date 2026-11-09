@@ -34,3 +34,19 @@ export function laengstesFreiesStueck(raum: Raum, kanteIndex: number, minLaenge 
 export const zeigeCm = (meter: number): string => String(Math.round(meter * 1000) / 10).replace('.', ',');
 
 export const wandDicke = (raum: Raum, kanteIndex: number): number => dickenVon(raum)[kanteIndex] ?? 0;
+
+/** Maß als Text, auf den Millimeter genau: "0,41" wenn volle Zentimeter, sonst "0,885". */
+export function zeigeMasse(meter: number): string {
+  const mm = Math.round(meter * 1000);
+  const text = mm % 10 === 0 ? (mm / 1000).toFixed(2) : (mm / 1000).toFixed(3);
+  return text.replace('.', ',');
+}
+
+/**
+ * Teilstücke einer Maßkette in Metern, auf den Millimeter gerundet. Gerundet wird jede Position für sich und
+ * dann die Differenz gebildet: Die Teilstücke ergeben dadurch immer genau das gerundete Gesamtmaß.
+ */
+export function kettenMasse(punkte: number[]): number[] {
+  const mm = punkte.map((p) => Math.round(p * 1000));
+  return mm.slice(1).map((p, i) => (p - mm[i]) / 1000);
+}

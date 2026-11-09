@@ -344,6 +344,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 
 ## 8. Notizen für später
 
+- **Maße (Rückmeldung des Nutzers, 9.11.):** Teilmaße einer Maßkette werden auf den Millimeter genau gezeigt und ergeben immer das gezeigte Gesamtmaß (`kettenMasse`, `zeigeMasse` in `modell/masse.ts`, 500-Fälle-Test). Kein Teilstück bleibt ohne Zahl: Passt sie nicht neben das Stück, rückt sie eine Zeile nach außen mit Strich. Gilt für Bildschirm und PDF.
+
 - **Transport nach Twenty (Wunsch des Nutzers, Etappe 3):** Erst banal im Gerät speichern (ist gebaut), danach per n8n senden. Gesendet werden: PDF, Vorschaubild (PNG), Quelldatei (JSON), Kundenname, Adresse, Kundennummer, Notizen (Vermerke), Skizzenname, Datum, Anzahl Räume, Gesamtfläche, Maßstab. Welche Felder Twenty wirklich braucht, legt der Nutzer fest; bis dahin gelten diese.
 
 - **Stand Ende des ersten Tages:** 1a bis 1d (Kern) fertig. Die App läuft auf dem Mini-PC des Nutzers (Docker, Tailscale) und auf dem Tablet. Zwei Finger verschieben dort, Rückmeldung: "funktioniert Bombe". Stift noch nicht ausprobiert.

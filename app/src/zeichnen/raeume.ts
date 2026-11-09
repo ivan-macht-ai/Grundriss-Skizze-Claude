@@ -3,7 +3,7 @@ import { dist } from '../geometrie/vec';
 import type { Raum } from '../modell/typen';
 import { dickenVon, nachbarSeiten, waendeUmriss } from '../modell/waende';
 import { kante as seitenKante } from '../modell/oeffnungen';
-import { kettenPunkte, laengstesFreiesStueck, zeigeCm } from '../modell/masse';
+import { kettenMasse, kettenPunkte, laengstesFreiesStueck, zeigeCm, zeigeMasse } from '../modell/masse';
 import { zeichneOeffnungen } from './oeffnungen';
 import { toScreen, type Viewport } from '../ansicht/viewport';
 
@@ -117,11 +117,12 @@ export function zeichneRaeume(
       const punkte = kettenPunkte(raum, i);
       const v1 = 20 + wandPx;
       if (punkte.length > 2) {
-        const breiteMax = Math.max(...punkte.slice(1).map((p, q) => ctx.measureText(kommaZahl(p - punkte[q], q % 2 === 0 ? 2 : 3)).width));
-        masskette(ctx, a, b, laenge, punkte, nx, ny, v1, wandPx, farben, (q, seg) => kommaZahl(seg, q % 2 === 0 ? 2 : 3), false);
-        masskette(ctx, a, b, laenge, [0, laenge], nx, ny, v1 + 26 + Math.abs(nx) * breiteMax, wandPx, farben, (_q, seg) => `${kommaZahl(seg)} m`, true);
+        const breiteMax = Math.max(...kettenMasse(punkte).map((t) => ctx.measureText(zeigeMasse(t)).width));
+        // Kurze Stücke bekommen ihre Zahl eine Zeile weiter außen: Platz für zwei Zeilen zusätzlich
+        masskette(ctx, a, b, laenge, punkte, nx, ny, v1, wandPx, farben, (_q, seg) => zeigeMasse(seg), false);
+        masskette(ctx, a, b, laenge, [0, laenge], nx, ny, v1 + 26 + 28 * Math.abs(ny) + Math.abs(nx) * breiteMax, wandPx, farben, (_q, seg) => `${zeigeMasse(seg)} m`, true);
       } else {
-        masskette(ctx, a, b, laenge, [0, laenge], nx, ny, v1, wandPx, farben, (_q, seg) => `${kommaZahl(seg)} m`, true);
+        masskette(ctx, a, b, laenge, [0, laenge], nx, ny, v1, wandPx, farben, (_q, seg) => `${zeigeMasse(seg)} m`, true);
       }
     }
   }
@@ -141,7 +142,7 @@ function masskette(
   wandPx: number,
   farben: RaumFarben,
   text: (index: number, teilLaenge: number) => string,
-  immerBeschriften: boolean,
+  _immerBeschriften: boolean,
 ): void {
   const bild = Math.hypot(b.x - a.x, b.y - a.y);
   const tx = (b.x - a.x) / bild;
@@ -171,14 +172,28 @@ function masskette(
   ctx.fillStyle = farben.text;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  for (let q = 0; q < positionen.length - 1; q++) {
-    const teil = positionen[q + 1] - positionen[q];
-    const beschriftung = text(q, teil);
+  // Jedes Teilstück bekommt seine Zahl. Passt sie nicht neben das Stück, rückt sie eine Zeile weiter nach außen
+  // (abwechselnd erste und zweite Zeile, damit sich kurze Nachbarstücke nicht überdecken) und ein Strich zeigt, wohin sie gehört.
+  const teile = kettenMasse(positionen);
+  let kurzZaehler = 0;
+  for (let q = 0; q < teile.length; q++) {
+    const beschriftung = text(q, teile[q]);
     const breite = ctx.measureText(beschriftung).width;
-    const teilPx = (bild * teil) / laenge;
-    if (!immerBeschriften && teilPx < breite + 6) continue;
-    const abstand = versatz + (breite / 2) * Math.abs(nx) + 8 * Math.abs(ny) + 6;
-    const m = punkt((positionen[q] + positionen[q + 1]) / 2, abstand);
+    const teilPx = (bild * teile[q]) / laenge;
+    // Platz entlang der Maßlinie, den die Zahl braucht: bei waagerechter Linie ihre Breite, bei senkrechter ihre Höhe
+    const noetig = breite * Math.abs(tx) + 14 * Math.abs(ty) + 6;
+    const mitte = (positionen[q] + positionen[q + 1]) / 2;
+    const extra = teilPx >= noetig ? 0 : (kurzZaehler++ % 2 === 0 ? 14 : 28);
+    const abstand = versatz + (breite / 2) * Math.abs(nx) + 8 * Math.abs(ny) + 6 + extra;
+    if (extra > 0) {
+      const von = punkt(mitte, versatz);
+      const bis = punkt(mitte, versatz + extra + 2);
+      ctx.beginPath();
+      ctx.moveTo(von.x, von.y);
+      ctx.lineTo(bis.x, bis.y);
+      ctx.stroke();
+    }
+    const m = punkt(mitte, abstand);
     ctx.fillText(beschriftung, m.x, m.y);
   }
 }

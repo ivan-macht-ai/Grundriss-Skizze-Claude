@@ -5,7 +5,7 @@ import { dickenVon } from '../modell/waende';
 import { kante } from '../modell/oeffnungen';
 import type { Raum } from '../modell/typen';
 import { toScreen, type Viewport } from '../ansicht/viewport';
-import { kommaZahl } from './raeume';
+import { zeigeMasse } from '../modell/masse';
 
 export interface OeffnungsFarben {
   flaeche: string;
@@ -105,7 +105,7 @@ export function zeichneOeffnungen(
 
     // Breite in Metern, außen neben der Wand: nur dort, wo keine Maßkette steht (Seite mit Nachbarraum)
     if (!kantenMitBreitenzahl.has(o.kante)) continue;
-    const text = kommaZahl(o.breite, 3);
+    const text = zeigeMasse(o.breite);
     ctx.font = '11px system-ui, sans-serif';
     const halb = (ctx.measureText(text).width / 2) * Math.abs(k.nx) + 6 * Math.abs(k.ny);
     const tm = bild((t0 + t1) / 2, aussen);

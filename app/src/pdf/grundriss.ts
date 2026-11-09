@@ -5,7 +5,7 @@ import { schwerpunkt, flaeche } from '../geometrie/polygon';
 import { dist, umgrenzung, type P } from '../geometrie/vec';
 import type { Oeffnung, Raum } from '../modell/typen';
 import { kante, type Kante } from '../modell/oeffnungen';
-import { kettenPunkte, laengstesFreiesStueck, zeigeCm } from '../modell/masse';
+import { kettenMasse, kettenPunkte, laengstesFreiesStueck, zeigeCm, zeigeMasse } from '../modell/masse';
 import { dickenVon, nachbarSeiten, waendeUmriss } from '../modell/waende';
 import { MM_ZU_PUNKT, seitenGroesse } from './blatt';
 
@@ -203,12 +203,12 @@ function zeichneRaum(w: Werkzeug, raum: Raum, andere: Raum[]): void {
     const D1 = d + mm(8);
     const punkte = kettenPunkte(raum, i);
     if (punkte.length > 2) {
-      const beschriftung = (q: number, teil: number) => komma(teil, q % 2 === 0 ? 2 : 3);
-      const maxMm = Math.max(...punkte.slice(1).map((p, q) => w.font.widthOfTextAtSize(beschriftung(q, p - punkte[q]), 6.5) / MM_ZU_PUNKT));
-      masskette(w, k, d, punkte, D1, mm, beschriftung, 6.5, false);
-      masskette(w, k, d, [0, k.laenge], D1 + mm(6 + Math.abs(k.nx) * maxMm), mm, (_q, teil) => komma(teil), 7, true);
+      const maxMm = Math.max(...kettenMasse(punkte).map((t) => w.font.widthOfTextAtSize(zeigeMasse(t), 6.5) / MM_ZU_PUNKT));
+      // Kurze Stücke bekommen ihre Zahl eine Zeile weiter außen: Platz für zwei Zeilen zusätzlich
+      masskette(w, k, d, punkte, D1, mm, (_q, teil) => zeigeMasse(teil), 6.5, false);
+      masskette(w, k, d, [0, k.laenge], D1 + mm(6 + 5 * Math.abs(k.ny) + Math.abs(k.nx) * maxMm), mm, (_q, teil) => zeigeMasse(teil), 7, true);
     } else {
-      masskette(w, k, d, [0, k.laenge], D1, mm, (_q, teil) => komma(teil), 7, true);
+      masskette(w, k, d, [0, k.laenge], D1, mm, (_q, teil) => zeigeMasse(teil), 7, true);
     }
   }
 }
@@ -223,7 +223,7 @@ function masskette(
   mm: (v: number) => number,
   text: (index: number, teil: number) => string,
   groesse: number,
-  immerBeschriften: boolean,
+  _immerBeschriften: boolean,
 ): void {
   const { l } = w;
   const P2 = (t: number, s: number): P => l.pt(k.a.x + k.dx * t + k.nx * s, k.a.y + k.dy * t + k.ny * s);
@@ -234,13 +234,19 @@ function masskette(
     const m = { x: k.a.x + k.dx * t + k.nx * D, y: k.a.y + k.dy * t + k.ny * D };
     linie(w, l.pt(m.x - (k.dx + k.nx) * e, m.y - (k.dy + k.ny) * e), l.pt(m.x + (k.dx + k.nx) * e, m.y + (k.dy + k.ny) * e), 0.35, GRAU);
   }
-  for (let q = 0; q < positionen.length - 1; q++) {
-    const teil = positionen[q + 1] - positionen[q];
-    const beschriftung = text(q, teil);
+  // Jedes Teilstück bekommt seine Zahl. Passt sie nicht neben das Stück, rückt sie eine Zeile weiter nach außen
+  // (abwechselnd erste und zweite Zeile) und ein kurzer Strich zeigt, wohin sie gehört.
+  const teile = kettenMasse(positionen);
+  let kurzZaehler = 0;
+  for (let q = 0; q < teile.length; q++) {
+    const beschriftung = text(q, teile[q]);
     const tb = w.font.widthOfTextAtSize(beschriftung, groesse);
-    if (!immerBeschriften && (teil * l.skala) < tb + 3) continue; // Teilstück zu kurz für die Zahl
-    const halb = (tb / 2) * Math.abs(k.nx) + (groesse * 0.45) * Math.abs(k.ny);
-    const mitte = P2((positionen[q] + positionen[q + 1]) / 2, D);
+    const noetig = tb * Math.abs(k.dx) + groesse * 1.1 * Math.abs(k.dy) + 2;
+    const extraMm = teile[q] * l.skala >= noetig ? 0 : (kurzZaehler++ % 2 === 0 ? 2.6 : 5.2);
+    const mittePos = (positionen[q] + positionen[q + 1]) / 2;
+    if (extraMm > 0) linie(w, P2(mittePos, D), P2(mittePos, D + mm(extraMm)), 0.15, GRAU);
+    const halb = (tb / 2) * Math.abs(k.nx) + groesse * 0.45 * Math.abs(k.ny);
+    const mitte = P2(mittePos, D + mm(extraMm));
     textMitte(w, beschriftung, mitte.x + k.nx * (3 + halb), mitte.y + k.ny * (3 + halb), groesse);
   }
 }
@@ -288,7 +294,7 @@ function zeichneOeffnung(w: Werkzeug, raum: Raum, o: Oeffnung, d: number, minD: 
 
   // Breite in Metern, außen neben der Wand: nur dort, wo keine Maßkette steht (Seite mit Nachbarraum)
   if (!mitBreitenzahl) return;
-  const text = komma(o.breite, 3);
+  const text = zeigeMasse(o.breite);
   const tb = w.font.widthOfTextAtSize(text, 6);
   const halb = (tb / 2) * Math.abs(k.nx) + 2.5 * Math.abs(k.ny);
   const m = bild((t0 + t1) / 2, aussen + mm(1.5));

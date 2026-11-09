@@ -45,3 +45,36 @@ describe('Wanddicke und freies Stück', () => {
     expect(zeigeCm(0.3)).toBe('30');
   });
 });
+
+import { kettenMasse, zeigeMasse } from '../src/modell/masse';
+
+describe('Maße auf den Millimeter', () => {
+  it('Text: volle Zentimeter mit zwei Stellen, sonst drei', () => {
+    expect(zeigeMasse(0.41)).toBe('0,41');
+    expect(zeigeMasse(0.885)).toBe('0,885');
+    expect(zeigeMasse(0.705)).toBe('0,705');
+    expect(zeigeMasse(2)).toBe('2,00');
+    expect(zeigeMasse(1.5)).toBe('1,50');
+    expect(zeigeMasse(0.1 + 0.2)).toBe('0,30'); // Gleitkomma-Rauschen verschwindet
+    expect(zeigeMasse(3.2449999)).toBe('3,245');
+  });
+
+  it('der Fall aus dem Bild: 0,41 + 0,885 + 0,705 = 2,00', () => {
+    const teile = kettenMasse([0, 0.41, 0.41 + 0.885, 2]);
+    expect(teile.map(zeigeMasse)).toEqual(['0,41', '0,885', '0,705']);
+    const summe = teile.reduce((a, b) => a + b, 0);
+    expect(zeigeMasse(summe)).toBe('2,00');
+  });
+
+  it('die gezeigten Teilmaße ergeben immer genau das gezeigte Gesamtmaß', () => {
+    let seed = 12345;
+    const zufall = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (let n = 0; n < 500; n++) {
+      const laenge = Math.round((0.5 + zufall() * 9) * 1000) / 1000;
+      const innen = Array.from({ length: Math.floor(zufall() * 5) }, () => Math.round(zufall() * laenge * 1000) / 1000).sort((a, b) => a - b);
+      const punkte = [0, ...innen, laenge];
+      const mm = kettenMasse(punkte).map((t) => Math.round(parseFloat(zeigeMasse(t).replace(',', '.')) * 1000));
+      expect(mm.reduce((a, b) => a + b, 0)).toBe(Math.round(parseFloat(zeigeMasse(laenge).replace(',', '.')) * 1000));
+    }
+  });
+});
