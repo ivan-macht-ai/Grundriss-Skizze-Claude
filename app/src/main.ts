@@ -74,15 +74,29 @@ function farbe(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
 }
 
+/** Stellt den Hinweis dorthin, wo er auf keiner Leiste liegt: erst oben, dann unten, dann in die Mitte. */
+function platziereHinweis(): void {
+  const leistenRaender = ['leiste-werkzeuge', 'leiste-zoom']
+    .map((id) => document.getElementById(id)!.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0);
+  const luft = 10;
+  for (const klasse of ['', 'unten', 'mitte']) {
+    toast.classList.remove('unten', 'mitte');
+    if (klasse) toast.classList.add(klasse);
+    const t = toast.getBoundingClientRect();
+    const frei = leistenRaender.every((r) => t.right + luft < r.left || t.left - luft > r.right || t.bottom + luft < r.top || t.top - luft > r.bottom);
+    if (frei) return;
+  }
+  // Nirgends ganz frei (sehr schmales Fenster): unten stört am wenigsten
+  toast.classList.remove('mitte');
+  toast.classList.add('unten');
+}
+
 function zeigeHinweis(text: string, fehler: boolean): void {
-  // Der Hinweis sitzt oben. Liegt dort eine Leiste (und unten nicht), wandert er nach unten.
-  const kanten = leisten.map((l) => l.kante());
-  const obenBelegt = kanten.filter((k) => k === 'oben').length;
-  const untenBelegt = kanten.filter((k) => k === 'unten').length;
-  toast.classList.toggle('unten', obenBelegt > untenBelegt);
   toast.textContent = text;
   toast.classList.toggle('fehler', fehler);
   toast.hidden = false;
+  platziereHinweis();
   window.clearTimeout(toastZeit);
   toastZeit = window.setTimeout(() => (toast.hidden = true), fehler ? 4500 : 2800);
 }
