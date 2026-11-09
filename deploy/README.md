@@ -35,6 +35,8 @@ Tagen löschen.
 
 ## Aktualisieren
 
+Einfach: `./deploy/aktualisieren.sh` (macht die zwei Befehle unten und zeigt den Stand). Nur nötig, wenn du eine neue Version testen willst.
+
 ```bash
 cd Grundriss-Skizze-Claude && git pull
 cd deploy && docker compose up -d --build

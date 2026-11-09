@@ -26,6 +26,7 @@ export function zeichneRaeume(
   farben: RaumFarben,
   auswahlId: number | null,
   auswahlOeffnung: { raumId: number; id: number } | null = null,
+  mitMassen = true,
 ): void {
   for (const raum of raeume) {
     const gewaehlt = raum.id === auswahlId;
@@ -62,7 +63,7 @@ export function zeichneRaeume(
       raum,
       { flaeche: farben.flaeche, linie: farben.linie, auswahl: farben.auswahl, text: farben.text },
       auswahlOeffnung && auswahlOeffnung.raumId === raum.id ? auswahlOeffnung.id : null,
-      nachbarn,
+      mitMassen ? nachbarn : new Set<number>(),
     );
 
     const sw = schwerpunkt(raum.ecken);
@@ -75,6 +76,9 @@ export function zeichneRaeume(
     ctx.fillStyle = farben.leise;
     ctx.font = '13px system-ui, sans-serif';
     ctx.fillText(`${kommaZahl(flaeche(raum.ecken), 2)} m²`, c.x, c.y + 10);
+
+    // Maße ausgeschaltet: Name und Fläche stehen im Raum, sonst nichts
+    if (!mitMassen) continue;
 
     // Wanddicke in Zentimetern, in der Wand (auf dem längsten Stück ohne Öffnung)
     ctx.font = 'bold 10px system-ui, sans-serif';

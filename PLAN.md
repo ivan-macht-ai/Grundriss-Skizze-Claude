@@ -344,6 +344,8 @@ Abhängigkeiten: 5. Größe: mittel. Wird vor Beginn genauer geplant.
 
 ## 8. Notizen für später
 
+- **Aufgeräumte Bedienung (Rückmeldung des Nutzers, 9.11.):** Schalter "Maße" (Lineal) neben dem Zoom und in den Einstellungen: blendet Maßketten, Wanddicken und Öffnungsbreiten auf dem Bildschirm aus (PDF unverändert). Schalter "Kunden und Senden (CRM)" in den Einstellungen: ohne ihn sind Senden, Kundenauswahl, Warteschlange und Server-Felder ausgeblendet (Standard: aus, außer es ist schon ein Server eingetragen). Raumerkennung ist ein eingeklapptes Fortgeschrittenen-Menü. Vorhaben des Nutzers: nach der Zeichnung soll ein Angebot entstehen; das braucht maßstabsgetreue, stimmige Zahlen (Auswertung der Mengen: Flächen, Wandlängen, Anzahl Türen/Fenster). Noch nicht geplant, mit dem Nutzer besprechen.
+
 - **Maße (Rückmeldung des Nutzers, 9.11.):** Teilmaße einer Maßkette werden auf den Millimeter genau gezeigt und ergeben immer das gezeigte Gesamtmaß (`kettenMasse`, `zeigeMasse` in `modell/masse.ts`, 500-Fälle-Test). Kein Teilstück bleibt ohne Zahl: Passt sie nicht neben das Stück, rückt sie eine Zeile nach außen mit Strich. Gilt für Bildschirm und PDF.
 
 - **Transport nach Twenty (Wunsch des Nutzers, Etappe 3):** Erst banal im Gerät speichern (ist gebaut), danach per n8n senden. Gesendet werden: PDF, Vorschaubild (PNG), Quelldatei (JSON), Kundenname, Adresse, Kundennummer, Notizen (Vermerke), Skizzenname, Datum, Anzahl Räume, Gesamtfläche, Maßstab. Welche Felder Twenty wirklich braucht, legt der Nutzer fest; bis dahin gelten diese.

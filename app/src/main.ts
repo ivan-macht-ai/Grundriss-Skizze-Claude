@@ -18,7 +18,7 @@ import { leseSkizzenDatei, neueId, neueSkizze, skizzeZuDatei, type Skizze } from
 import { alleSkizzen, bitteUmDauerhaftenSpeicher, ladeSkizze, loescheSkizze, loescheVersionen, speichereSkizze, speichereVersion, versionenVon, warteschlange } from './speicher/idb';
 import { grundText, inhaltsStempel, neueVersion, zuLoeschen, type Grund, type Version } from './modell/versionen';
 import { vorschauSvg } from './zeichnen/vorschau';
-import { ladeJson, ladeKundenCache, ladeServer, ladeToleranzen, speichereJson, speichereKundenCache, speichereServer, speichereToleranzen } from './speicher/einstellungen';
+import { ladeAnzeige, ladeJson, ladeKundenCache, ladeServer, ladeToleranzen, speichereAnzeige, speichereJson, speichereKundenCache, speichereServer, speichereToleranzen } from './speicher/einstellungen';
 import { arbeiteAb, holeKunden, normalisiereAdresse, suche, type Auftrag } from './senden/client';
 import { erzeugeVorschauBild } from './zeichnen/bild';
 import { kommaZahl, zeichneRaeume } from './zeichnen/raeume';
@@ -49,6 +49,7 @@ let auswahlId: number | null = null;
 let auswahlOeffnung: OeffnungsRef | null = null;
 let naechsteId = 1;
 let toleranzen: Toleranzen = ladeToleranzen();
+let anzeige = ladeAnzeige();
 let zeigerWelt: { x: number; y: number } | null = null;
 let geplant = false;
 let loeschenScharf: number | undefined;
@@ -165,6 +166,7 @@ function zeichne(): void {
     },
     auswahlId,
     auswahlOeffnung,
+    anzeige.masse,
   );
 
   const laufend = eingabe.aktuellerStrich();
@@ -1193,7 +1195,7 @@ async function aktualisiereWarteschlange(): Promise<void> {
 
 /** Schickt wartende Aufträge an den Server. Von selbst (beim Start, bei Netz, alle zwei Minuten) und auf Knopfdruck. */
 async function arbeiteWarteschlange(manuell: boolean): Promise<void> {
-  if (sendeLaeuft) return;
+  if (sendeLaeuft || !anzeige.crm) return;
   if (!normalisiereAdresse(serverEinst.adresse)) {
     if (manuell) zeigeHinweis('Trage die Server-Adresse in den Einstellungen ein, dann wird gesendet.', true);
     return;
@@ -1417,6 +1419,35 @@ if ('serviceWorker' in navigator && window.top === window.self && location.proto
       /* ohne Service Worker läuft die App trotzdem, nur nicht offline */
     });
 }
+
+// Anzeige: Maße und CRM-Funktionen ein- und ausschalten
+const masseKnopf = document.getElementById('btn-masse') as HTMLButtonElement;
+const optMasse = document.getElementById('opt-masse') as HTMLInputElement;
+const optCrm = document.getElementById('opt-crm') as HTMLInputElement;
+
+function wendeAnzeigeAn(): void {
+  masseKnopf.setAttribute('aria-pressed', String(anzeige.masse));
+  optMasse.checked = anzeige.masse;
+  optCrm.checked = anzeige.crm;
+  document.getElementById('btn-senden')!.hidden = !anzeige.crm;
+  for (const id of ['crm-kunde', 'crm-warteschlange', 'server-felder']) document.getElementById(id)!.hidden = !anzeige.crm;
+  plane();
+}
+function setzeAnzeige(neu: Partial<typeof anzeige>): void {
+  anzeige = { ...anzeige, ...neu };
+  speichereAnzeige(anzeige);
+  wendeAnzeigeAn();
+}
+masseKnopf.addEventListener('click', () => {
+  setzeAnzeige({ masse: !anzeige.masse });
+  zeigeHinweis(anzeige.masse ? 'Maße sind an.' : 'Maße sind aus. Im PDF stehen sie trotzdem.', false);
+});
+optMasse.addEventListener('change', () => setzeAnzeige({ masse: optMasse.checked }));
+optCrm.addEventListener('change', () => {
+  setzeAnzeige({ crm: optCrm.checked });
+  if (anzeige.crm) void aktualisiereWarteschlange().then(() => arbeiteWarteschlange(false));
+});
+wendeAnzeigeAn();
 
 window.addEventListener('resize', passeGroesseAn);
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', plane);

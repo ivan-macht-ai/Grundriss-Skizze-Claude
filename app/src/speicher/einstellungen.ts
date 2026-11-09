@@ -82,3 +82,25 @@ export function ladeKundenCache(): KundenCache | null {
 export function speichereKundenCache(c: KundenCache): void {
   speichereJson(SCHLUESSEL_KUNDEN, c);
 }
+
+const SCHLUESSEL_ANZEIGE = 'skizze.anzeige.v1';
+
+export interface Anzeige {
+  /** Maße auf dem Bildschirm zeigen (im PDF stehen sie immer) */
+  masse: boolean;
+  /** Kunden aus dem CRM und Senden verwenden */
+  crm: boolean;
+}
+
+/** Wer schon einen Server eingetragen hat, behält die CRM-Funktionen; sonst sind sie zunächst ausgeblendet. */
+export function ladeAnzeige(): Anzeige {
+  const g = ladeJson<Partial<Anzeige>>(SCHLUESSEL_ANZEIGE) ?? {};
+  return {
+    masse: typeof g.masse === 'boolean' ? g.masse : true,
+    crm: typeof g.crm === 'boolean' ? g.crm : ladeServer().adresse.trim() !== '',
+  };
+}
+
+export function speichereAnzeige(a: Anzeige): void {
+  speichereJson(SCHLUESSEL_ANZEIGE, a);
+}

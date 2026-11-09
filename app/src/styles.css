@@ -706,3 +706,17 @@ textarea {
   border-radius: 12px;
   background: var(--leiste);
 }
+
+details.gruppe {
+  margin-top: 18px;
+  border: 1px solid var(--linie);
+  border-radius: 14px;
+  padding: 0 14px 6px;
+}
+details.gruppe summary {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
+}
